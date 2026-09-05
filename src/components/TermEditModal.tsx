@@ -114,7 +114,7 @@ export function TermEditModal({ open, term, onClose, onSaved }: TermEditModalPro
               }}
               onBlur={() => tagInput && addTag(tagInput)}
               placeholder="adicionar tag…"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-faint"
+              className="flex-1 bg-transparent text-base outline-none placeholder:text-faint sm:text-sm"
             />
           </div>
         </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, Check, BookmarkPlus } from 'lucide-react'
+import { Copy, Check, BookmarkPlus, TextSelect } from 'lucide-react'
 import { SpeakButton } from '@/components/SpeakButton'
 import { cn } from '@/lib/utils'
 
@@ -9,9 +9,16 @@ interface GameControlsProps {
   text: string
   language: string
   onSaveClick: () => void
+  // Blurs the game input to close the mobile keyboard, so text can be selected.
+  onDismissKeyboard?: () => void
 }
 
-export function GameControls({ text, language, onSaveClick }: GameControlsProps) {
+export function GameControls({
+  text,
+  language,
+  onSaveClick,
+  onDismissKeyboard,
+}: GameControlsProps) {
   const [copied, setCopied] = useState(false)
 
   function copy() {
@@ -43,6 +50,19 @@ export function GameControls({ text, language, onSaveClick }: GameControlsProps)
         <BookmarkPlus size={17} />
         Salvar palavra
       </button>
+
+      {/* Mobile only: dismiss the keyboard so the user can select text (the OS
+          blocks selecting page text while the input is focused). */}
+      {onDismissKeyboard && (
+        <button
+          onClick={onDismissKeyboard}
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg sm:hidden"
+          aria-label="Fechar teclado para selecionar"
+        >
+          <TextSelect size={17} />
+          Selecionar
+        </button>
+      )}
     </div>
   )
 }

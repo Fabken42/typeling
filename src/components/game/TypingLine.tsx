@@ -9,7 +9,6 @@ interface TypingLineProps {
   typedChars: (string | null)[]
   extras: string
   cursorSlot: number
-  compositionBuffer: string
   revealCount: number
   fullyRevealed: boolean
   lineRef: React.RefObject<HTMLDivElement | null>
@@ -32,33 +31,21 @@ const RESULT_CLASS: Record<SlotResult, string> = {
 export function TypingLine({
   slots,
   results,
-  typedChars,
   extras,
   cursorSlot,
-  compositionBuffer,
   revealCount,
   fullyRevealed,
   lineRef,
   cursorRef,
   shake,
 }: TypingLineProps) {
-  const composing = compositionBuffer.length > 0
   const atEnd = cursorSlot >= slots.length
   const nodes: React.ReactNode[] = []
 
+  // Only the target text is rendered here — never the in-composition (IME)
+  // buffer. That buffer is shown in a fixed reserved band below the line
+  // (see TypingArea), so composing never reflows/shifts the target text.
   for (let i = 0; i < slots.length; i++) {
-    // The in-composition buffer sits just before the cursor slot.
-    if (i === cursorSlot && composing) {
-      nodes.push(
-        <span
-          key="comp"
-          className="text-sky-400 underline decoration-dotted underline-offset-4"
-        >
-          {compositionBuffer}
-        </span>,
-      )
-    }
-
     const slot = slots[i]
     const result = results[i]
     const revealed =
@@ -81,16 +68,6 @@ export function TypingLine({
 
   // Cursor at the very end of the line (all slots consumed).
   if (atEnd) {
-    if (composing) {
-      nodes.push(
-        <span
-          key="comp-end"
-          className="text-sky-400 underline decoration-dotted underline-offset-4"
-        >
-          {compositionBuffer}
-        </span>,
-      )
-    }
     if (extras) {
       nodes.push(
         <span key="extras" className="rounded-sm bg-rose-500/25 text-rose-400">

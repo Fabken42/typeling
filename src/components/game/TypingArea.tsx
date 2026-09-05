@@ -13,6 +13,7 @@ import {
   evaluate,
   typableCount,
   type EvalSettings,
+  type SlotResult,
 } from '@/lib/text/slots'
 import type { LanguageCode } from '@/lib/languages'
 
@@ -42,6 +43,10 @@ export function TypingArea() {
   const lineRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const cursorElRef = useRef<HTMLElement | null>(null)
+  // Last text selected inside the line. Unlike pendingSelection state, this is
+  // NOT cleared when the selection collapses, so it survives tapping the "save
+  // word" button (which collapses the selection on mobile).
+  const selectionRef = useRef<string | null>(null)
 
   const [inputPos, setInputPos] = useState({ top: 0, left: 0 })
   const [caretPos, setCaretPos] = useState({ top: 0, left: 0, height: 0 })
@@ -62,15 +67,44 @@ export function TypingArea() {
     [line, language, settings.ignoreDiacritics, settings.requireSpaces],
   )
 
-  // During composition, evaluate only the confirmed prefix (spec 6.5).
+  // During composition, evaluate the confirmed prefix normally (spec 6.5).
   const confirmedInput = isComposing ? input.slice(0, compositionStart) : input
   const compositionBuffer = isComposing ? input.slice(compositionStart) : ''
 
-  const evalOut = useMemo(
-    () => evaluate(slots, confirmedInput, evalSettings),
+  const evalOut = useMemo(() => {
+    const confirmed = evaluate(slots, confirmedInput, evalSettings)
+    // Not composing → nothing extra to do.
+    if (!isComposing || compositionBuffer.length === 0) return confirmed
+
+    // Real-time feedback for the in-composition (blue) text: evaluate the full
+    // input (confirmed + composition) and color the target GREEN where it
+    // matches. Mismatches in the composition region stay NEUTRAL (never red) —
+    // otherwise the phonetic phase (romaji/kana/pinyin) would flash red before
+    // conversion. Committed errors (in the confirmed region) still show red.
+    const full = evaluate(slots, input, evalSettings)
+    const boundary = confirmed.cursorSlot
+    const results: SlotResult[] = full.results.map((r, i) =>
+      i >= boundary && r === 'wrong' ? 'pending' : r,
+    )
+    // Caret sits at the end of the matched (green) run within the composition.
+    let cursor = boundary
+    while (
+      cursor < slots.length &&
+      (full.results[cursor] === 'correct' || full.results[cursor] === 'skipped')
+    ) {
+      cursor++
+    }
+    return { ...confirmed, results, cursorSlot: cursor, extras: '' }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [slots, confirmedInput, settings.ignoreDiacritics, settings.requireSpaces],
-  )
+  }, [
+    slots,
+    confirmedInput,
+    input,
+    isComposing,
+    compositionBuffer,
+    settings.ignoreDiacritics,
+    settings.requireSpaces,
+  ])
 
   const cursorRef = useCallback((el: HTMLElement | null) => {
     cursorElRef.current = el
@@ -117,8 +151,34 @@ export function TypingArea() {
   }, [pendingSelection, modalOpen])
 
   useEffect(() => {
+    selectionRef.current = null
     focusInput()
   }, [currentLine, focusInput])
+
+  // Capture selections via selectionchange too — on mobile, selecting text
+  // (long-press) doesn't fire mouseup, so this is the reliable signal. It only
+  // ever records a valid in-line selection; it never clears (clearing is
+  // explicit elsewhere), so the value survives the button tap that collapses it.
+  useEffect(() => {
+    function onSelChange() {
+      const sel = window.getSelection()
+      const text = sel?.toString().trim() ?? ''
+      const insideLine =
+        !!sel?.anchorNode && !!lineRef.current?.contains(sel.anchorNode)
+      if (text && insideLine) {
+        selectionRef.current = text
+        setPendingSelection(text)
+        try {
+          setChipRect(sel!.getRangeAt(0).getBoundingClientRect())
+        } catch {
+          setChipRect(null)
+        }
+      }
+    }
+    document.addEventListener('selectionchange', onSelChange)
+    return () => document.removeEventListener('selectionchange', onSelChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function triggerShake() {
     setShake(true)
@@ -143,7 +203,7 @@ export function TypingArea() {
   }, [handleAdvance])
 
   function openSaveModal(term?: string) {
-    setModalTerm(term ?? pendingSelection ?? '')
+    setModalTerm(term ?? selectionRef.current ?? pendingSelection ?? '')
     setModalOpen(true)
   }
 
@@ -225,6 +285,7 @@ export function TypingArea() {
           window.getSelection()?.removeAllRanges()
           setPendingSelection(null)
           setChipRect(null)
+          selectionRef.current = null
           inputRef.current?.focus()
         } else if (document.activeElement !== inputRef.current) {
           inputRef.current?.focus()
@@ -242,6 +303,7 @@ export function TypingArea() {
     const text = sel?.toString().trim() ?? ''
     const insideLine = !!sel?.anchorNode && !!lineRef.current?.contains(sel.anchorNode)
     if (text && insideLine) {
+      selectionRef.current = text
       setPendingSelection(text)
       try {
         setChipRect(sel!.getRangeAt(0).getBoundingClientRect())
@@ -249,57 +311,87 @@ export function TypingArea() {
         setChipRect(null)
       }
     } else {
+      selectionRef.current = null
       setPendingSelection(null)
       setChipRect(null)
     }
   }
 
+  // Tapping anywhere on the text focuses the hidden input. Focusing inside the
+  // tap gesture is what opens the mobile soft keyboard — without this, the
+  // keyboard only appeared when tapping right on the tiny input at the cursor.
+  // Skipped while text is selected, to preserve the "select a word to save" flow.
+  function onAreaClick() {
+    const sel = window.getSelection()
+    if (sel && sel.toString().trim().length > 0) return
+    // Tapped the text with no selection → forget the last selection and type.
+    selectionRef.current = null
+    inputRef.current?.focus()
+  }
+
   return (
     <div className="flex flex-col items-center gap-8">
-      <div
-        ref={wrapperRef}
-        className="relative w-full max-w-3xl px-4"
-        onMouseUp={onMouseUp}
-      >
-        <TypingLine
-          slots={slots}
-          results={evalOut.results}
-          typedChars={evalOut.typedChars}
-          extras={evalOut.extras}
-          cursorSlot={evalOut.cursorSlot}
-          compositionBuffer={compositionBuffer}
-          revealCount={revealCount}
-          fullyRevealed={fullyRevealed}
-          lineRef={lineRef}
-          cursorRef={cursorRef}
-          shake={shake}
-        />
-        <span
-          aria-hidden
-          className="caret animate-caret-blink"
-          style={{ top: caretPos.top, left: caretPos.left, height: caretPos.height }}
-        />
-        <TypingInput
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyDown}
-          onCompositionStart={() =>
-            startComposition(inputRef.current?.selectionStart ?? input.length)
-          }
-          onCompositionUpdate={() => {
-            /* re-render only */
-          }}
-          onCompositionEnd={(e) => endComposition(e.currentTarget.value)}
-          style={{ top: inputPos.top, left: inputPos.left }}
-        />
-      </div>
-
       <GameControls
         text={line}
         language={language}
         onSaveClick={() => openSaveModal()}
+        onDismissKeyboard={() => inputRef.current?.blur()}
       />
+
+      <div className="flex w-full max-w-3xl flex-col items-center">
+        {/* Reserved IME composition band: fixed height so the target line below
+            never shifts as the composing (blue) text grows/shrinks. Sits above
+            the text, just under the action icons. */}
+        <div
+          aria-live="polite"
+          className="mb-3 flex h-9 items-center justify-center px-8 text-2xl text-sky-400 sm:px-16"
+        >
+          {compositionBuffer && (
+            <span className="underline decoration-dotted underline-offset-4">
+              {compositionBuffer}
+            </span>
+          )}
+        </div>
+
+        <div
+          ref={wrapperRef}
+          className="relative w-full px-8 sm:px-16"
+          onMouseUp={onMouseUp}
+          onClick={onAreaClick}
+        >
+          <TypingLine
+            slots={slots}
+            results={evalOut.results}
+            typedChars={evalOut.typedChars}
+            extras={evalOut.extras}
+            cursorSlot={evalOut.cursorSlot}
+            revealCount={revealCount}
+            fullyRevealed={fullyRevealed}
+            lineRef={lineRef}
+            cursorRef={cursorRef}
+            shake={shake}
+          />
+          <span
+            aria-hidden
+            className="caret animate-caret-blink"
+            style={{ top: caretPos.top, left: caretPos.left, height: caretPos.height }}
+          />
+          <TypingInput
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            onCompositionStart={() =>
+              startComposition(inputRef.current?.selectionStart ?? input.length)
+            }
+            onCompositionUpdate={() => {
+              /* re-render only */
+            }}
+            onCompositionEnd={(e) => endComposition(e.currentTarget.value)}
+            style={{ top: inputPos.top, left: inputPos.left }}
+          />
+        </div>
+      </div>
 
       {pendingSelection && (
         <SelectionChip
@@ -315,6 +407,8 @@ export function TypingArea() {
           setModalOpen(false)
           setPendingSelection(null)
           setChipRect(null)
+          selectionRef.current = null
+          window.getSelection()?.removeAllRanges()
           setTimeout(focusInput, 50)
         }}
         initialTerm={modalTerm}
