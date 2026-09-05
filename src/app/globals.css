@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark-first theme tokens (spec 17). Values are space-separated RGB channels so
+   Tailwind's <alpha-value> works. The .light class inverts them coherently. */
+:root {
+  --bg: 9 9 11; /* zinc-950 */
+  --surface: 24 24 27; /* zinc-900 */
+  --surface-2: 39 39 42; /* zinc-800 */
+  --border: 39 39 42; /* zinc-800 */
+  --fg: 244 244 245; /* zinc-100 */
+  --muted: 161 161 170; /* zinc-400 */
+  --faint: 82 82 91; /* zinc-600 */
+  color-scheme: dark;
+}
+
+.light {
+  --bg: 250 250 250; /* zinc-50 */
+  --surface: 255 255 255;
+  --surface-2: 244 244 245; /* zinc-100 */
+  --border: 228 228 231; /* zinc-200 */
+  --fg: 24 24 27; /* zinc-900 */
+  --muted: 82 82 91; /* zinc-600 */
+  --faint: 161 161 170; /* zinc-400 */
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Blinking caret used by the typing engine. Absolutely positioned inside the
+   typing wrapper; its top/left/height are measured and set inline so it lines
+   up exactly with the cursor character. */
+.caret {
+  position: absolute;
+  width: 2px;
+  border-radius: 1px;
+  background-color: rgb(16 185 129); /* emerald-500 */
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Slim scrollbars for panels. */
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--surface-2));
+  border-radius: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
