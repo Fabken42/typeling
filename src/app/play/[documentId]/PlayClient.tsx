@@ -5,8 +5,6 @@ import Link from 'next/link'
 import {
   ChevronLeft,
   ChevronRight,
-  Settings as SettingsIcon,
-  ArrowLeft,
   RotateCcw,
   LayoutDashboard,
 } from 'lucide-react'
@@ -103,29 +101,13 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Thin header */}
-      <header className="flex h-14 items-center gap-3 border-b border-border px-4">
-        <Link href="/dashboard" className="flex items-center gap-1.5 text-sm text-muted hover:text-fg">
-          <ArrowLeft size={16} /> Dashboard
-        </Link>
-        <div className="mx-auto flex items-center gap-2">
-          <span className="max-w-[50vw] truncate font-medium">{dTitle}</span>
-          <LanguageBadge language={dLanguage} />
-        </div>
-        <Link
-          href="/settings"
-          className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
-          aria-label="Configurações"
-        >
-          <SettingsIcon size={18} />
-        </Link>
-      </header>
-
-      {/* Progress bar */}
+    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col">
+      {/* Document context bar — title + progress (global nav is in the header) */}
       <div className="border-b border-border px-4 py-2.5">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <ProgressBar value={ratio} className="flex-1" />
+          <span className="max-w-[40vw] truncate text-sm font-medium">{dTitle}</span>
+          <LanguageBadge language={dLanguage} />
+          <ProgressBar value={ratio} className="ml-2 flex-1" />
           <span className="shrink-0 text-xs text-muted">
             linha {Math.min(dCurrentLine + 1, dLineCount)} de {dLineCount} · {pct}%
           </span>

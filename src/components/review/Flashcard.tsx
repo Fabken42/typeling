@@ -55,15 +55,25 @@ export function Flashcard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term.id])
 
-  const hideTerm = clozeMode && !revealed
+  // Cloze = production direction: the front shows the meaning (translation) +
+  // the sentence with a blank, and the user must produce the target word. The
+  // word (and its audio) is the answer, so it's hidden on the cloze front.
+  const isClozeFront = clozeMode && !revealed
 
   return (
     <div className="w-full max-w-2xl">
       <div className="rounded-2xl border border-border bg-surface p-8 text-center">
-        {/* Term */}
+        {/* Term / prompt */}
         <div className="flex flex-col items-center gap-1">
-          {hideTerm ? (
-            <div className="text-5xl font-semibold text-faint">? ? ?</div>
+          {isClozeFront ? (
+            <>
+              <span className="text-xs uppercase tracking-wide text-muted">
+                Produza a palavra
+              </span>
+              <span className="mt-1 text-3xl font-semibold">
+                {term.translation || '(sem tradução)'}
+              </span>
+            </>
           ) : (
             <>
               <div className="flex items-center gap-3">
@@ -77,13 +87,16 @@ export function Flashcard({
           )}
         </div>
 
-        {/* Sentence */}
+        {/* Sentence — context. Audio is hidden on the cloze front so the TTS
+            doesn't speak the answer word aloud. */}
         {term.sentence && (
           <div className="mt-6 flex items-center justify-center gap-2">
             <div className="rounded-xl border border-border bg-surface-2 px-5 py-3 text-lg">
-              {renderSentence(term.sentence, term.term, clozeMode && !revealed)}
+              {renderSentence(term.sentence, term.term, isClozeFront)}
             </div>
-            <SpeakButton text={term.sentence} language={term.language} />
+            {!isClozeFront && (
+              <SpeakButton text={term.sentence} language={term.language} />
+            )}
           </div>
         )}
 

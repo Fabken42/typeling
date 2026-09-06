@@ -45,7 +45,13 @@ export const TypingInput = forwardRef<HTMLInputElement, TypingInputProps>(
         autoCapitalize="off"
         spellCheck={false}
         aria-label="Digite a linha"
-        className="absolute z-10 w-[2ch] border-none bg-transparent p-0 text-3xl outline-none sm:text-4xl"
+        // pointer-events-none so the input (positioned over the cursor slot)
+        // doesn't intercept taps/clicks meant to select the text underneath —
+        // otherwise the first word can't be selected when the cursor is at the
+        // start of the line. Focus is handled programmatically (onAreaClick /
+        // line change / keydown), and the IME anchors to the input's layout box
+        // regardless of pointer-events.
+        className="pointer-events-none absolute z-10 w-[2ch] border-none bg-transparent p-0 text-3xl outline-none sm:text-4xl"
         style={{
           opacity: 0,
           caretColor: 'transparent',

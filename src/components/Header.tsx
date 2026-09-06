@@ -12,6 +12,7 @@ import {
   Upload,
   LogOut,
   ChevronDown,
+  Play,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/client'
@@ -20,7 +21,8 @@ import { useSettingsStore } from '@/store/settingsStore'
 
 interface HeaderProps {
   user: { name?: string | null; email?: string | null; image?: string | null }
-  initialDue: number
+  initialQueued: number
+  lastPlayed: { id: string; title: string } | null
 }
 
 const NAV = [
@@ -30,9 +32,9 @@ const NAV = [
   { href: '/settings', label: 'Configurações', icon: SettingsIcon },
 ]
 
-export function Header({ user, initialDue }: HeaderProps) {
+export function Header({ user, initialQueued, lastPlayed }: HeaderProps) {
   const pathname = usePathname()
-  const [due, setDue] = useState(initialDue)
+  const [queued, setQueued] = useState(initialQueued)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const loadSettings = useSettingsStore((s) => s.load)
@@ -45,9 +47,9 @@ export function Header({ user, initialDue }: HeaderProps) {
   useEffect(() => {
     let alive = true
     api
-      .get<{ due: number }>('/api/review/stats')
+      .get<{ queued: number }>('/api/review/stats')
       .then((r) => {
-        if (alive) setDue(r.due)
+        if (alive) setQueued(r.queued)
       })
       .catch(() => {})
     return () => {
@@ -92,9 +94,9 @@ export function Header({ user, initialDue }: HeaderProps) {
               >
                 <Icon size={16} />
                 {item.label}
-                {item.badge && due > 0 && (
+                {item.badge && queued > 0 && (
                   <span className="ml-1 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                    {due}
+                    {queued}
                   </span>
                 )}
               </Link>
@@ -103,6 +105,18 @@ export function Header({ user, initialDue }: HeaderProps) {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {lastPlayed && pathname !== `/play/${lastPlayed.id}` && (
+            <Link
+              href={`/play/${lastPlayed.id}`}
+              title={`Continuar: ${lastPlayed.title}`}
+              className="inline-flex h-9 max-w-[200px] items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            >
+              <Play size={16} className="shrink-0" />
+              <span className="hidden truncate lg:inline">{lastPlayed.title}</span>
+              <span className="lg:hidden">Continuar</span>
+            </Link>
+          )}
+
           <Link
             href="/upload"
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-500"

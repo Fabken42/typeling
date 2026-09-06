@@ -196,17 +196,3 @@ export async function getReviewStats(
 
   return { due, newAvailable, queued, nextDue }
 }
-
-/** Cheapest possible: just the count of cards due right now (nav badge). */
-export async function countDueNow(
-  userId: mongoose.Types.ObjectId,
-  now: Date = new Date(),
-): Promise<number> {
-  await dbConnect()
-  return TermModel.countDocuments({
-    userId,
-    suspended: false,
-    'fsrs.state': { $ne: STATE_NEW },
-    'fsrs.due': { $lte: now },
-  })
-}
