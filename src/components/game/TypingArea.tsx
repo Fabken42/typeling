@@ -152,7 +152,14 @@ export function TypingArea() {
 
   useEffect(() => {
     selectionRef.current = null
-    focusInput()
+    // On touch devices, don't steal focus when the line changes: the Prev/Next
+    // buttons fire this within the tap gesture, and a programmatic focus() there
+    // pops the soft keyboard. Mobile users open the keyboard by tapping the text
+    // (onAreaClick); on desktop we still auto-focus so typing continues at once.
+    const coarsePointer =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(pointer: coarse)').matches
+    if (!coarsePointer) focusInput()
   }, [currentLine, focusInput])
 
   // Capture selections via selectionchange too — on mobile, selecting text
@@ -281,6 +288,17 @@ export function TypingArea() {
         !e.metaKey &&
         !e.altKey
       ) {
+        // If another field is focused (e.g. the "Ir para linha" box), let it
+        // handle the key — don't steal focus back to the game input.
+        const active = document.activeElement as HTMLElement | null
+        const inOtherField =
+          !!active &&
+          active !== inputRef.current &&
+          (active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            active.tagName === 'SELECT' ||
+            active.isContentEditable)
+        if (inOtherField) return
         if (pendingSelection) {
           window.getSelection()?.removeAllRanges()
           setPendingSelection(null)
