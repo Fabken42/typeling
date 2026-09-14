@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select'
 import { DocumentCard } from '@/components/dashboard/DocumentCard'
 import { useToast } from '@/components/ui/Toast'
 import { api } from '@/lib/client'
+import { progressRatio } from '@/lib/utils'
 import { langInfo } from '@/lib/languages'
 import type { DocumentSummaryDTO } from '@/lib/serialize'
 
@@ -21,8 +22,8 @@ const SORTS = [
   { value: 'progress-asc', label: 'Menor progresso' },
 ]
 
-function progressRatio(d: DocumentSummaryDTO): number {
-  return d.lineCount > 0 ? d.progress.completedCount / d.lineCount : 0
+function docProgress(d: DocumentSummaryDTO): number {
+  return progressRatio(d.progress.currentLine, d.lineCount)
 }
 
 function DashboardInner({ initialDocs }: { initialDocs: DocumentSummaryDTO[] }) {
@@ -73,7 +74,6 @@ function DashboardInner({ initialDocs }: { initialDocs: DocumentSummaryDTO[] }) 
     patchLocal(id, {
       progress: {
         currentLine: 0,
-        completedCount: 0,
         totalKeystrokes: 0,
         correctKeystrokes: 0,
         lastPlayedAt: null,
@@ -114,10 +114,10 @@ function DashboardInner({ initialDocs }: { initialDocs: DocumentSummaryDTO[] }) 
         list.sort((a, b) => a.title.localeCompare(b.title))
         break
       case 'progress-desc':
-        list.sort((a, b) => progressRatio(b) - progressRatio(a))
+        list.sort((a, b) => docProgress(b) - docProgress(a))
         break
       case 'progress-asc':
-        list.sort((a, b) => progressRatio(a) - progressRatio(b))
+        list.sort((a, b) => docProgress(a) - docProgress(b))
         break
       default:
         list.sort((a, b) => byDate(b.createdAt) - byDate(a.createdAt))
@@ -179,7 +179,7 @@ function DashboardInner({ initialDocs }: { initialDocs: DocumentSummaryDTO[] }) 
           Nenhum documento corresponde aos filtros.
         </p>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((doc) => (
             <DocumentCard
               key={doc.id}

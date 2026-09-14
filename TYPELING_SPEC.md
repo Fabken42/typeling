@@ -145,8 +145,7 @@ export async function dbConnect() {
   lineCount: Number,             // = lines.length (denormalizado para listagens)
 
   progress: {
-    currentLine: Number,         // índice 0-based da linha onde o usuário parou
-    completedLines: [Number],    // índices 0-based já concluídos com Enter, ordenados e únicos
+    currentLine: Number,         // índice 0-based da última linha em que o usuário esteve
     totalKeystrokes: Number,     // acumulado, para estatística de acurácia
     correctKeystrokes: Number,
     lastPlayedAt: Date?,
@@ -161,8 +160,9 @@ export async function dbConnect() {
 - `lines` é embutido no documento. Um episódio tem ~400 linhas — cabe folgado no limite de 16 MB do
   BSON. Valide no upload: **máximo 20.000 linhas e 2 MB de texto total**; acima disso, rejeite com
   mensagem clara.
-- A barra de progresso usa `completedLines.length / lineCount`. **Nunca** use `currentLine` para a
-  barra — assim o progresso não regride quando o usuário volta uma linha.
+- A barra de progresso é **posicional**: `(currentLine + 1) / lineCount`. Reflete a linha atual sobre
+  o total — pular para a linha 25 de 50 mostra 50%, e chegar à última linha mostra 100%. O progresso
+  acompanha a posição atual (pode regredir ao voltar uma linha). Use o helper `progressRatio()`.
 - O texto "linha 30 de 90" usa `currentLine + 1` e `lineCount`.
 
 **Índices:**
@@ -255,7 +255,6 @@ export async function dbConnect() {
   ttsRate: Number,                  // 0.5–1.5, default 0.9
   dailyNewLimit: Number,            // default 20
   dailyReviewLimit: Number,         // default 200
-  clozeMode: Boolean,               // default false
   theme: String,                    // 'dark' | 'light' | 'system' — default 'dark'
 }
 ```
@@ -542,8 +541,8 @@ onKeyDown = (e) => {
 
 `Enter` é a **única** forma de concluir uma linha.
 
-- Por padrão (`requireCorrectToAdvance: false`), `Enter` **sempre** avança. A linha é marcada como
-  concluída (entra em `completedLines`) mesmo se tiver erros — a acurácia fica registrada.
+- Por padrão (`requireCorrectToAdvance: false`), `Enter` **sempre** avança para a próxima linha,
+  mesmo se tiver erros — a acurácia fica registrada nos contadores de keystrokes.
 - Com `requireCorrectToAdvance: true`, `Enter` só avança se `isPerfect === true`; caso contrário,
   aplique um shake na linha e não avance.
 - Ao avançar: acumule `totalKeystrokes += slots.filter(s => s.typable).length` e
@@ -553,7 +552,7 @@ onKeyDown = (e) => {
 
 ### 6.7 Salvamento de progresso
 
-- Zustand mantém `currentLine`, `completedLines` e os contadores em memória — a UI é instantânea.
+- Zustand mantém `currentLine` e os contadores em memória — a UI é instantânea.
 - Persistência: `POST /api/documents/:id/progress` com **debounce de 2 segundos** após qualquer
   mudança.
 - Adicionalmente, um flush no `visibilitychange` (quando `document.visibilityState === 'hidden'`)
@@ -595,7 +594,7 @@ onKeyDown = (e) => {
 
 ### 7.3 Navegação
 
-- **◀ Anterior** / **Próxima ▶**: mudam `currentLine` **sem** marcar a linha como concluída.
+- **◀ Anterior** / **Próxima ▶**: mudam `currentLine` (e, portanto, o progresso posicional).
   Desabilitados nos extremos.
 - **Ir para linha**: input numérico **1-based** (o usuário vê "linha 30", então digita 30 → índice 29).
   Clamp em `[1, lineCount]`. Enter dentro desse input executa o pulo e devolve o foco ao input do jogo.
@@ -861,10 +860,6 @@ Fila **única e global**, filtrável por idioma e por documento (query params). 
 **Verso:** tudo da frente, mais a tradução em destaque e as notas, e os 4 botões no lugar do
 "Mostrar resposta".
 
-**Modo cloze** (toggle na tela de revisão, persistido em `settings.clozeMode`): na frente, o termo
-aparece na frase como `＿＿＿` em vez de negrito, e o termo grande fica oculto — o usuário precisa
-deduzir pelo contexto. No verso, tudo é revelado.
-
 ### 13.4 Atalhos
 
 | Tecla | Ação |
@@ -904,7 +899,6 @@ pendente (`Próxima revisão: amanhã, 14 cards`).
 **Revisão**
 - Novos cards por dia (padrão 20)
 - Revisões por dia (padrão 200)
-- Modo cloze nos flashcards (padrão: desligado)
 
 **Aparência** — Tema: Escuro (padrão) / Claro / Sistema.
 
@@ -937,7 +931,7 @@ GET    /api/documents                    lista (?lang=&sort=&q=)
 GET    /api/documents/:id                detalhe, com as linhas
 PATCH  /api/documents/:id                título, idioma
 DELETE /api/documents/:id
-POST   /api/documents/:id/progress       { currentLine, completedLines, totalKeystrokes, correctKeystrokes }
+POST   /api/documents/:id/progress       { currentLine, totalKeystrokes, correctKeystrokes }
 POST   /api/documents/:id/reset          zera o progresso
 
 POST   /api/terms                        cria termo/card

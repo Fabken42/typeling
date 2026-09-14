@@ -9,18 +9,18 @@ import {
   useState,
 } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Loader2, X, Pencil, PauseCircle, CalendarClock, PartyPopper } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Toggle } from '@/components/ui/Toggle'
 import { Flashcard } from '@/components/review/Flashcard'
 import { TermEditModal } from '@/components/TermEditModal'
 import { useToast } from '@/components/ui/Toast'
 import { useReviewStore, type QueueCounts } from '@/store/reviewStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { api } from '@/lib/client'
-import { dueLabel } from '@/lib/utils'
+import { dueLabel, cn } from '@/lib/utils'
 import { langInfo } from '@/lib/languages'
+import type { LanguageReviewCount } from '@/lib/review'
 import type { TermDTO } from '@/lib/serialize'
 import type { ClientSettings } from '@/lib/settingsDefaults'
 
@@ -32,17 +32,43 @@ export interface ReviewInitialData {
 
 interface Props {
   initialData: ReviewInitialData
+  initialLanguages: LanguageReviewCount[]
   initialSettings: ClientSettings
 }
 
-function ReviewInner({ initialData, initialSettings }: Props) {
+function ReviewInner({ initialData, initialLanguages, initialSettings }: Props) {
   const params = useSearchParams()
   const query = params.toString()
+  const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
 
-  const settings = useSettingsStore((s) => s.settings)
+  // Language filter (multi-select). The selection lives in the URL (?langs=…)
+  // so it's bookmarkable and drives the existing refetch-on-query-change. No
+  // `langs` param means "all languages" (the default).
+  const allLangCodes = initialLanguages.map((l) => l.language)
+  const langsParam = params.get('langs')
+  const selectedLangs = langsParam
+    ? new Set(langsParam.split(',').filter((c) => allLangCodes.includes(c as never)))
+    : new Set(allLangCodes)
+  // A stale/empty param falls back to "all" so the user is never stuck.
+  const effectiveSelected =
+    selectedLangs.size === 0 ? new Set(allLangCodes) : selectedLangs
+
+  const toggleLang = (code: string) => {
+    const next = new Set(effectiveSelected)
+    if (next.has(code)) next.delete(code)
+    else next.add(code)
+    if (next.size === 0) return // keep at least one language selected
+
+    const sp = new URLSearchParams(params.toString())
+    if (next.size === allLangCodes.length) sp.delete('langs')
+    else sp.set('langs', allLangCodes.filter((c) => next.has(c)).join(','))
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
   const hydrateSettings = useSettingsStore((s) => s.hydrate)
-  const updateSettings = useSettingsStore((s) => s.update)
 
   const {
     queue,
@@ -137,16 +163,17 @@ function ReviewInner({ initialData, initialSettings }: Props) {
     return () => document.removeEventListener('keydown', onKey)
   }, [finishedQueue, editOpen, revealed, reveal, rate, suspend])
 
+  const total = queue.length
+
+  let content: React.ReactNode
   if (loading || !loaded) {
-    return (
+    content = (
       <div className="grid place-items-center py-24 text-muted">
         <Loader2 className="animate-spin" />
       </div>
     )
-  }
-
-  if (queue.length === 0 && !ended) {
-    return (
+  } else if (queue.length === 0 && !ended) {
+    content = (
       <div className="grid place-items-center rounded-2xl border border-dashed border-border py-24 text-center">
         <CalendarClock className="text-muted" size={40} />
         <h2 className="mt-4 text-lg font-medium">Nada para revisar agora</h2>
@@ -160,10 +187,8 @@ function ReviewInner({ initialData, initialSettings }: Props) {
         </Link>
       </div>
     )
-  }
-
-  if (finishedQueue) {
-    return (
+  } else if (finishedQueue) {
+    content = (
       <SessionSummary
         ratings={ratings}
         total={reviewedCount}
@@ -175,49 +200,99 @@ function ReviewInner({ initialData, initialSettings }: Props) {
         }}
       />
     )
-  }
+  } else {
+    content = (
+      <>
+        <div className="mb-6 flex items-center gap-3">
+          <div className="text-sm text-muted">
+            {index + 1} / {total}
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <button onClick={() => setEditOpen(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Editar (E)">
+              <Pencil size={16} />
+            </button>
+            <button onClick={suspend} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Suspender (S)">
+              <PauseCircle size={16} />
+            </button>
+            <button onClick={() => setEnded(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Encerrar (Esc)">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
 
-  const total = queue.length
-  const langName = params.get('lang') ? langInfo(params.get('lang')!)?.name : null
+        {current && (
+          <Flashcard
+            term={current}
+            revealed={revealed}
+            onReveal={reveal}
+            onRate={rate}
+          />
+        )}
+
+        <TermEditModal
+          open={editOpen}
+          term={current ?? null}
+          onClose={() => setEditOpen(false)}
+          onSaved={(t) => updateCurrent(t)}
+        />
+      </>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="text-sm text-muted">
-          {index + 1} / {total}
-          {langName && <span className="ml-2">· {langName}</span>}
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          <Toggle checked={settings.clozeMode} onChange={(v) => updateSettings({ clozeMode: v })} />
-          <span className="text-xs text-muted">Cloze</span>
-          <button onClick={() => setEditOpen(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Editar (E)">
-            <Pencil size={16} />
-          </button>
-          <button onClick={suspend} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Suspender (S)">
-            <PauseCircle size={16} />
-          </button>
-          <button onClick={() => setEnded(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Encerrar (Esc)">
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-
-      {current && (
-        <Flashcard
-          term={current}
-          revealed={revealed}
-          clozeMode={settings.clozeMode}
-          onReveal={reveal}
-          onRate={rate}
+      {initialLanguages.length > 1 && (
+        <LanguageFilterBar
+          languages={initialLanguages}
+          selected={effectiveSelected}
+          onToggle={toggleLang}
         />
       )}
+      {content}
+    </div>
+  )
+}
 
-      <TermEditModal
-        open={editOpen}
-        term={current ?? null}
-        onClose={() => setEditOpen(false)}
-        onSaved={(t) => updateCurrent(t)}
-      />
+function LanguageFilterBar({
+  languages,
+  selected,
+  onToggle,
+}: {
+  languages: LanguageReviewCount[]
+  selected: Set<string>
+  onToggle: (code: string) => void
+}) {
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-2">
+      {languages.map((l) => {
+        const info = langInfo(l.language)
+        const active = selected.has(l.language)
+        return (
+          <button
+            key={l.language}
+            onClick={() => onToggle(l.language)}
+            aria-pressed={active}
+            title={`${l.due} para revisar · ${l.newAvailable} novos`}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+              active
+                ? 'border-emerald-600/50 bg-emerald-600/15 text-fg'
+                : 'border-border text-muted hover:bg-surface-2 hover:text-fg',
+            )}
+          >
+            <span>{info?.flag}</span>
+            <span>{info?.name ?? l.language}</span>
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+                active ? 'bg-emerald-600 text-white' : 'bg-surface-2 text-muted',
+              )}
+            >
+              {l.total}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }

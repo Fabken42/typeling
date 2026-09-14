@@ -11,6 +11,9 @@ interface GameControlsProps {
   onSaveClick: () => void
   // Blurs the game input to close the mobile keyboard, so text can be selected.
   onDismissKeyboard?: () => void
+  // Resolves what the copy button should copy: the selected snippet of the
+  // current line if any, otherwise the whole line. Falls back to `text`.
+  getCopyText?: () => string
 }
 
 export function GameControls({
@@ -18,11 +21,13 @@ export function GameControls({
   language,
   onSaveClick,
   onDismissKeyboard,
+  getCopyText,
 }: GameControlsProps) {
   const [copied, setCopied] = useState(false)
 
   function copy() {
-    navigator.clipboard.writeText(text).then(() => {
+    const value = getCopyText ? getCopyText() : text
+    navigator.clipboard.writeText(value).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })

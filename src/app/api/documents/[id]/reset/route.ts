@@ -22,7 +22,6 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
       {
         $set: {
           'progress.currentLine': 0,
-          'progress.completedLines': [],
           'progress.totalKeystrokes': 0,
           'progress.correctKeystrokes': 0,
           'progress.lastPlayedAt': null,

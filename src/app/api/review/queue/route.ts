@@ -9,8 +9,10 @@ export async function GET(req: NextRequest) {
   return withErrors(async () => {
     const userId = await requireUserId()
     const { searchParams } = new URL(req.url)
+    const langsParam = searchParams.get('langs')
     const result = await buildQueue(userId, {
       lang: searchParams.get('lang'),
+      langs: langsParam ? langsParam.split(',') : null,
       doc: searchParams.get('doc'),
     })
     return json({

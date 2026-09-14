@@ -87,7 +87,13 @@ export function SaveTermModal(props: SaveTermModalProps) {
         sourceLang,
         targetLang,
       })
-      setTranslation(r.translation)
+      const result = r.translation.trim()
+      // Keep whatever the user already typed (e.g. the reading) and append the
+      // DeepL result after a "." separator, so they see reading + meaning.
+      setTranslation((prev) => {
+        const existing = prev.trim()
+        return existing ? `${existing}. ${result}` : result
+      })
     } catch {
       // DeepL failure never blocks saving (spec 8/9) — allow manual fill.
       setTranslateError('Tradução automática indisponível, preencha manualmente')

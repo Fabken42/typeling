@@ -31,22 +31,14 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const doc = await DocumentModel.findOne({ _id, userId })
     if (!doc) return errorJson('Documento não encontrado', 404)
 
+    // Progress is the last line the user was on (position-based), so we store
+    // the latest reported line — including when the user navigates backward.
     const currentLine = Number(body.currentLine)
     if (Number.isFinite(currentLine)) {
       doc.progress.currentLine = Math.max(
         0,
         Math.min(Math.trunc(currentLine), doc.lineCount - 1),
       )
-    }
-
-    // Union with existing completed lines so out-of-order flushes never regress
-    // progress (spec acceptance criterion 8).
-    if (Array.isArray(body.completedLines)) {
-      const incoming = (body.completedLines as unknown[])
-        .map((n) => Number(n))
-        .filter((n) => Number.isInteger(n) && n >= 0 && n < doc.lineCount)
-      const merged = new Set<number>([...doc.progress.completedLines, ...incoming])
-      doc.progress.completedLines = Array.from(merged).sort((a, b) => a - b)
     }
 
     // Keystrokes only ever grow; take the max so a stale flush can't regress them.

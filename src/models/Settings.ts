@@ -27,7 +27,6 @@ const SettingsSchema = new Schema<ISettings>({
   ttsRate: { type: Number, default: DEFAULT_SETTINGS.ttsRate },
   dailyNewLimit: { type: Number, default: DEFAULT_SETTINGS.dailyNewLimit },
   dailyReviewLimit: { type: Number, default: DEFAULT_SETTINGS.dailyReviewLimit },
-  clozeMode: { type: Boolean, default: DEFAULT_SETTINGS.clozeMode },
   theme: { type: String, default: DEFAULT_SETTINGS.theme },
 })
 

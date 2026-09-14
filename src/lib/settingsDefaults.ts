@@ -12,7 +12,6 @@ export interface SettingsValues {
   ttsRate: number
   dailyNewLimit: number
   dailyReviewLimit: number
-  clozeMode: boolean
   theme: 'dark' | 'light' | 'system'
 }
 
@@ -25,7 +24,6 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   ttsRate: 0.9,
   dailyNewLimit: 20,
   dailyReviewLimit: 200,
-  clozeMode: false,
   theme: 'dark',
 }
 

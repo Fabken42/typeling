@@ -40,7 +40,6 @@ export async function PATCH(req: NextRequest) {
     if (Number.isInteger(body.dailyReviewLimit)) {
       update.dailyReviewLimit = Math.max(0, Math.min(99999, body.dailyReviewLimit))
     }
-    if (typeof body.clozeMode === 'boolean') update.clozeMode = body.clozeMode
     if (['dark', 'light', 'system'].includes(body.theme)) update.theme = body.theme
 
     await dbConnect()

@@ -17,7 +17,7 @@ import { Input, Label } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { LanguageBadge } from '@/components/LanguageBadge'
-import { relativeTime, cn } from '@/lib/utils'
+import { relativeTime, cn, progressRatio } from '@/lib/utils'
 import { LANGUAGE_LIST } from '@/lib/languages'
 import type { DocumentSummaryDTO } from '@/lib/serialize'
 
@@ -41,10 +41,9 @@ export function DocumentCard({ doc, onRename, onChangeLanguage, onReset, onDelet
   const [language, setLanguage] = useState(doc.language)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const completed = doc.progress.completedCount
-  const ratio = doc.lineCount > 0 ? completed / doc.lineCount : 0
+  const ratio = progressRatio(doc.progress.currentLine, doc.lineCount)
   const pct = Math.round(ratio * 100)
-  const done = doc.lineCount > 0 && completed >= doc.lineCount
+  const done = doc.lineCount > 0 && doc.progress.currentLine + 1 >= doc.lineCount
   const lastPlayed = doc.progress.lastPlayedAt
 
   useEffect(() => {
@@ -83,7 +82,7 @@ export function DocumentCard({ doc, onRename, onChangeLanguage, onReset, onDelet
     <>
       <div
         onClick={() => router.push(`/play/${doc.id}`)}
-        className="group relative cursor-pointer rounded-xl border border-border bg-surface p-4 transition-colors hover:border-emerald-500/40"
+        className="group relative min-w-0 cursor-pointer rounded-xl border border-border bg-surface p-4 transition-colors hover:border-emerald-500/40"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">

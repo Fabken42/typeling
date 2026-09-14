@@ -39,6 +39,16 @@ export function relativeTime(date: Date | string | null | undefined): string {
   return `há ${years} ano${years > 1 ? 's' : ''}`
 }
 
+/**
+ * Progress is position-based: how far the user's current line is through the
+ * document (1-based line over total). Reaching the last line means 100%.
+ * Returns a ratio in [0, 1].
+ */
+export function progressRatio(currentLine: number, lineCount: number): number {
+  if (lineCount <= 0) return 0
+  return Math.max(0, Math.min(1, (currentLine + 1) / lineCount))
+}
+
 export function dueLabel(due: Date | string, state: number): string {
   if (state === 0) return 'novo'
   const d = typeof due === 'string' ? new Date(due) : due

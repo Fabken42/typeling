@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { SpeakButton } from '@/components/SpeakButton'
+import { LanguageBadge } from '@/components/LanguageBadge'
 import { cn } from '@/lib/utils'
 import { previewIntervals, formatInterval } from '@/lib/fsrs'
 import type { TermDTO } from '@/lib/serialize'
@@ -9,7 +10,6 @@ import type { TermDTO } from '@/lib/serialize'
 interface FlashcardProps {
   term: TermDTO
   revealed: boolean
-  clozeMode: boolean
   onReveal: () => void
   onRate: (rating: number) => void
 }
@@ -21,8 +21,8 @@ const RATING_BUTTONS = [
   { rating: 4, label: 'Fácil', color: 'bg-sky-600 hover:bg-sky-500' },
 ]
 
-/** Renders the sentence, either bolding the term or blanking it (cloze). */
-function renderSentence(sentence: string, term: string, cloze: boolean) {
+/** Renders the sentence with the term bolded. */
+function renderSentence(sentence: string, term: string) {
   if (!term) return <>{sentence}</>
   const idx = sentence.toLowerCase().indexOf(term.toLowerCase())
   if (idx === -1) return <>{sentence}</>
@@ -32,71 +32,49 @@ function renderSentence(sentence: string, term: string, cloze: boolean) {
   return (
     <>
       {before}
-      {cloze ? (
-        <span className="font-semibold text-emerald-400">＿＿＿</span>
-      ) : (
-        <strong className="font-semibold text-emerald-400">{match}</strong>
-      )}
+      <strong className="font-semibold text-emerald-400">{match}</strong>
       {after}
     </>
   )
 }
 
-export function Flashcard({
-  term,
-  revealed,
-  clozeMode,
-  onReveal,
-  onRate,
-}: FlashcardProps) {
+export function Flashcard({ term, revealed, onReveal, onRate }: FlashcardProps) {
   const intervals = useMemo(() => {
     const now = new Date()
     return previewIntervals(term.fsrs, now).map((p) => formatInterval(p.card, now))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term.id])
 
-  // Cloze = production direction: the front shows the meaning (translation) +
-  // the sentence with a blank, and the user must produce the target word. The
-  // word (and its audio) is the answer, so it's hidden on the cloze front.
-  const isClozeFront = clozeMode && !revealed
-
   return (
     <div className="w-full max-w-2xl">
       <div className="rounded-2xl border border-border bg-surface p-8 text-center">
+        {/* Language of this term — helps avoid confusing which language it is. */}
+        <div className="mb-4 flex justify-center">
+          <LanguageBadge
+            language={term.language}
+            showName
+            className="rounded-full border border-border bg-surface-2 px-2.5 py-1"
+          />
+        </div>
+
         {/* Term / prompt */}
         <div className="flex flex-col items-center gap-1">
-          {isClozeFront ? (
-            <>
-              <span className="text-xs uppercase tracking-wide text-muted">
-                Produza a palavra
-              </span>
-              <span className="mt-1 text-3xl font-semibold">
-                {term.translation || '(sem tradução)'}
-              </span>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <span className="text-5xl font-semibold">{term.term}</span>
-                <SpeakButton text={term.term} language={term.language} size={22} />
-              </div>
-              {term.reading && (
-                <div className="text-lg text-muted">{term.reading}</div>
-              )}
-            </>
+          <div className="flex items-center gap-3">
+            <span className="text-5xl font-semibold">{term.term}</span>
+            <SpeakButton text={term.term} language={term.language} size={22} />
+          </div>
+          {term.reading && (
+            <div className="text-lg text-muted">{term.reading}</div>
           )}
         </div>
 
-        {/* Sentence — context. Audio is hidden on the cloze front so the TTS
-            doesn't speak the answer word aloud. */}
+        {/* Sentence — context. */}
         {term.sentence && (
           <div className="mt-6 flex items-center justify-center gap-2">
             <div className="rounded-xl border border-border bg-surface-2 px-5 py-3 text-lg">
-              {renderSentence(term.sentence, term.term, isClozeFront)}
+              {renderSentence(term.sentence, term.term)}
             </div>
-            {!isClozeFront && (
-              <SpeakButton text={term.sentence} language={term.language} />
-            )}
+            <SpeakButton text={term.sentence} language={term.language} />
           </div>
         )}
 

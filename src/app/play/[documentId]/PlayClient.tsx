@@ -14,6 +14,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { TypingArea } from '@/components/game/TypingArea'
 import { LanguageBadge } from '@/components/LanguageBadge'
 import { api } from '@/lib/client'
+import { progressRatio } from '@/lib/utils'
 import { useGameStore, flushProgressBeacon } from '@/store/gameStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import type { DocumentDTO } from '@/lib/serialize'
@@ -34,7 +35,6 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
   const language = useGameStore((s) => s.language)
   const currentLine = useGameStore((s) => s.currentLine)
   const lineCount = useGameStore((s) => s.lineCount)
-  const completedLines = useGameStore((s) => s.completedLines)
   const finished = useGameStore((s) => s.finished)
   const totalKeystrokes = useGameStore((s) => s.totalKeystrokes)
   const correctKeystrokes = useGameStore((s) => s.correctKeystrokes)
@@ -85,9 +85,8 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
   const dLanguage = ready ? language : doc.language
   const dLineCount = ready ? lineCount : doc.lineCount
   const dCurrentLine = ready ? currentLine : (startLine ?? doc.progress.currentLine)
-  const dCompleted = ready ? completedLines.length : doc.progress.completedLines.length
 
-  const ratio = dLineCount > 0 ? dCompleted / dLineCount : 0
+  const ratio = progressRatio(dCurrentLine, dLineCount)
   const pct = Math.round(ratio * 100)
   const accuracy =
     totalKeystrokes > 0 ? Math.round((correctKeystrokes / totalKeystrokes) * 100) : 100
@@ -105,7 +104,7 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
       {/* Document context bar — title + progress (global nav is in the header) */}
       <div className="border-b border-border px-4 py-2.5">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <span className="max-w-[40vw] truncate text-sm font-medium">{dTitle}</span>
+          <span className="max-w-[30vw] truncate text-sm font-medium sm:max-w-[45vw]">{dTitle}</span>
           <LanguageBadge language={dLanguage} />
           <ProgressBar value={ratio} className="ml-2 flex-1" />
           <span className="shrink-0 text-xs text-muted">
@@ -118,7 +117,7 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
       <div className="flex flex-1 flex-col items-center justify-center py-10">
         {ready && finished ? (
           <CompletionScreen
-            completed={dCompleted}
+            completed={dLineCount}
             lineCount={dLineCount}
             accuracy={accuracy}
             onRestart={restart}
@@ -131,7 +130,7 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
       {/* Navigation */}
       {!(ready && finished) && (
         <footer className="border-t border-border px-4 py-3">
-          <div className="mx-auto flex max-w-3xl items-center justify-center gap-3">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => goToLine(dCurrentLine - 1)} disabled={dCurrentLine <= 0}>
               <ChevronLeft size={16} /> Anterior
             </Button>

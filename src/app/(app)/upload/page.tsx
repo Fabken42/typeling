@@ -241,7 +241,7 @@ export default function UploadPage() {
         Tudo é processado no seu navegador.
       </p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left: input */}
         <div className="space-y-4">
           <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">

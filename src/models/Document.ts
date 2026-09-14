@@ -6,7 +6,6 @@ const { Schema } = mongoose
 
 export interface IProgress {
   currentLine: number
-  completedLines: number[]
   totalKeystrokes: number
   correctKeystrokes: number
   lastPlayedAt?: Date | null
@@ -29,7 +28,6 @@ export interface IDocument {
 const ProgressSchema = new Schema<IProgress>(
   {
     currentLine: { type: Number, default: 0 },
-    completedLines: { type: [Number], default: [] },
     totalKeystrokes: { type: Number, default: 0 },
     correctKeystrokes: { type: Number, default: 0 },
     lastPlayedAt: { type: Date, default: null },

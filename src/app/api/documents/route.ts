@@ -48,7 +48,6 @@ export async function POST(req: NextRequest) {
       lineCount: cleanLines.length,
       progress: {
         currentLine: 0,
-        completedLines: [],
         totalKeystrokes: 0,
         correctKeystrokes: 0,
         lastPlayedAt: null,

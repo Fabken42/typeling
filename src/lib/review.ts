@@ -5,12 +5,13 @@ import ReviewLogModel from '@/models/ReviewLog'
 import SettingsModel from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/settingsDefaults'
 import { dayStart } from '@/lib/utils'
-import { isLanguageCode } from '@/lib/languages'
+import { isLanguageCode, type LanguageCode } from '@/lib/languages'
 
 const STATE_NEW = 0
 
 export interface QueueFilters {
   lang?: string | null
+  langs?: string[] | null
   doc?: string | null
 }
 
@@ -19,7 +20,13 @@ function baseFilter(
   filters: QueueFilters,
 ): Record<string, unknown> {
   const f: Record<string, unknown> = { userId, suspended: false }
-  if (filters.lang && isLanguageCode(filters.lang)) f.language = filters.lang
+  // `langs` (a multi-select subset) takes precedence over the single `lang`.
+  const langs = (filters.langs ?? []).filter((l) => isLanguageCode(l))
+  if (langs.length > 0) {
+    f.language = langs.length === 1 ? langs[0] : { $in: langs }
+  } else if (filters.lang && isLanguageCode(filters.lang)) {
+    f.language = filters.lang
+  }
   if (filters.doc) f.documentId = filters.doc
   return f
 }
@@ -195,4 +202,64 @@ export async function getReviewStats(
   }
 
   return { due, newAvailable, queued, nextDue }
+}
+
+export interface LanguageReviewCount {
+  language: LanguageCode
+  due: number // review cards due right now
+  newAvailable: number // brand-new cards
+  total: number // due + newAvailable — the pool waiting in this language
+}
+
+/**
+ * Per-language breakdown of what's waiting to review, for the /review language
+ * filter. One row per language the user has (non-suspended) terms in, sorted by
+ * the biggest pending pool first. Counts ignore the global daily limits (those
+ * are shared across languages, so they can't be split cleanly) — they show the
+ * eligible pool, which is what the user needs to decide what to include.
+ */
+export async function getLanguageBreakdown(
+  userId: mongoose.Types.ObjectId,
+  now: Date = new Date(),
+): Promise<LanguageReviewCount[]> {
+  await dbConnect()
+  const rows = await TermModel.aggregate<{
+    _id: string
+    due: number
+    newAvailable: number
+  }>([
+    { $match: { userId, suspended: false } },
+    {
+      $group: {
+        _id: '$language',
+        due: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $ne: ['$fsrs.state', STATE_NEW] },
+                  { $lte: ['$fsrs.due', now] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        newAvailable: {
+          $sum: { $cond: [{ $eq: ['$fsrs.state', STATE_NEW] }, 1, 0] },
+        },
+      },
+    },
+  ])
+
+  return rows
+    .filter((r) => isLanguageCode(r._id))
+    .map((r) => ({
+      language: r._id as LanguageCode,
+      due: r.due,
+      newAvailable: r.newAvailable,
+      total: r.due + r.newAvailable,
+    }))
+    .sort((a, b) => b.total - a.total || a.language.localeCompare(b.language))
 }

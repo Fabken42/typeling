@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import { redirect } from 'next/navigation'
 import { safeAuth } from '@/lib/session'
-import { buildQueue } from '@/lib/review'
+import { buildQueue, getLanguageBreakdown } from '@/lib/review'
 import { serializeTerm } from '@/lib/serialize'
 import { getOrCreateSettings } from '@/lib/settings'
 import { ReviewClient } from './ReviewClient'
@@ -11,15 +11,20 @@ import { ReviewClient } from './ReviewClient'
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lang?: string; doc?: string }>
+  searchParams: Promise<{ langs?: string; doc?: string }>
 }) {
   const session = await safeAuth()
   if (!session?.user?.id) redirect('/login')
   const userId = new mongoose.Types.ObjectId(session.user.id)
 
-  const { lang, doc } = await searchParams
-  const [result, settings] = await Promise.all([
-    buildQueue(userId, { lang, doc }),
+  const { langs, doc } = await searchParams
+  const langList = langs ? langs.split(',') : null
+
+  // The queue respects the language filter; the breakdown does NOT — it always
+  // lists every studied language so the user can re-add one they've filtered out.
+  const [result, languages, settings] = await Promise.all([
+    buildQueue(userId, { langs: langList, doc }),
+    getLanguageBreakdown(userId),
     getOrCreateSettings(userId),
   ])
 
@@ -32,5 +37,11 @@ export default async function ReviewPage({
   const { userId: _drop, ...clientSettings } = settings
   void _drop
 
-  return <ReviewClient initialData={initialData} initialSettings={clientSettings} />
+  return (
+    <ReviewClient
+      initialData={initialData}
+      initialLanguages={languages}
+      initialSettings={clientSettings}
+    />
+  )
 }

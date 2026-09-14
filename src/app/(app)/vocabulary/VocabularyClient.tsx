@@ -161,7 +161,7 @@ export function VocabularyClient({
     <div>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold">Vocabulário</h1>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <Button variant="secondary" onClick={() => setAddOpen(true)}>
             <Plus size={16} /> Adicionar palavra
           </Button>
@@ -211,15 +211,15 @@ export function VocabularyClient({
         <p className="mt-16 text-center text-sm text-muted">Nenhum termo encontrado.</p>
       ) : (
         <>
-          <div className="mt-5 overflow-hidden rounded-xl border border-border">
-            <table className="w-full text-sm">
+          <div className="mt-5 overflow-x-auto rounded-xl border border-border">
+            <table className="w-full min-w-[520px] text-sm">
               <thead className="bg-surface text-left text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Termo</th>
                   <th className="px-4 py-2.5 font-medium">Tradução</th>
                   <th className="hidden px-4 py-2.5 font-medium lg:table-cell">Frase</th>
                   <th className="px-4 py-2.5 font-medium">Idioma</th>
-                  <th className="px-4 py-2.5 font-medium">Revisão</th>
+                  <th className="hidden px-4 py-2.5 font-medium sm:table-cell">Revisão</th>
                   <th className="px-4 py-2.5 font-medium text-right">Ações</th>
                 </tr>
               </thead>
@@ -237,7 +237,7 @@ export function VocabularyClient({
                       </Tooltip>
                     </td>
                     <td className="px-4 py-2.5"><LanguageBadge language={t.language} /></td>
-                    <td className="px-4 py-2.5 text-muted">{dueLabel(t.fsrs.due, t.fsrs.state)}</td>
+                    <td className="hidden px-4 py-2.5 text-muted sm:table-cell">{dueLabel(t.fsrs.due, t.fsrs.state)}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-end gap-1">
                         <IconBtn title="Editar" onClick={() => setEditing(t)}><Pencil size={15} /></IconBtn>

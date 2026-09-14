@@ -35,7 +35,6 @@ export function serializeSettings(doc: ISettings): PlainSettings {
     ttsRate: doc.ttsRate,
     dailyNewLimit: doc.dailyNewLimit,
     dailyReviewLimit: doc.dailyReviewLimit,
-    clozeMode: doc.clozeMode,
     theme: doc.theme,
   }
 }

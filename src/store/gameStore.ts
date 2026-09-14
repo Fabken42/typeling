@@ -11,7 +11,6 @@ interface GameState {
   lineCount: number
 
   currentLine: number
-  completedLines: number[]
   totalKeystrokes: number
   correctKeystrokes: number
 
@@ -40,7 +39,6 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 function progressPayload(s: GameState) {
   return {
     currentLine: s.currentLine,
-    completedLines: s.completedLines,
     totalKeystrokes: s.totalKeystrokes,
     correctKeystrokes: s.correctKeystrokes,
   }
@@ -65,7 +63,6 @@ function scheduleSave(get: () => GameState) {
 export function flushProgressBeacon(s: {
   documentId: string | null
   currentLine: number
-  completedLines: number[]
   totalKeystrokes: number
   correctKeystrokes: number
 }) {
@@ -75,7 +72,6 @@ export function flushProgressBeacon(s: {
     [
       JSON.stringify({
         currentLine: s.currentLine,
-        completedLines: s.completedLines,
         totalKeystrokes: s.totalKeystrokes,
         correctKeystrokes: s.correctKeystrokes,
       }),
@@ -92,7 +88,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   lines: [],
   lineCount: 0,
   currentLine: 0,
-  completedLines: [],
   totalKeystrokes: 0,
   correctKeystrokes: 0,
   input: '',
@@ -114,7 +109,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         startLine != null
           ? Math.max(0, Math.min(startLine, doc.lineCount - 1))
           : Math.max(0, Math.min(doc.progress.currentLine, doc.lineCount - 1)),
-      completedLines: [...doc.progress.completedLines],
       totalKeystrokes: doc.progress.totalKeystrokes,
       correctKeystrokes: doc.progress.correctKeystrokes,
       input: '',
@@ -153,12 +147,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   completeCurrentLine: (typable, correct) => {
     const s = get()
     const isLast = s.currentLine >= s.lineCount - 1
-    const completed = s.completedLines.includes(s.currentLine)
-      ? s.completedLines
-      : [...s.completedLines, s.currentLine].sort((a, b) => a - b)
 
     set({
-      completedLines: completed,
       totalKeystrokes: s.totalKeystrokes + typable,
       correctKeystrokes: s.correctKeystrokes + correct,
       input: '',

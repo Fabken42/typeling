@@ -113,7 +113,7 @@ export function Header({ user, initialQueued, lastPlayed }: HeaderProps) {
             >
               <Play size={16} className="shrink-0" />
               <span className="hidden truncate lg:inline">{lastPlayed.title}</span>
-              <span className="lg:hidden">Continuar</span>
+              <span className="hidden sm:inline lg:hidden">Continuar</span>
             </Link>
           )}
 

@@ -1,25 +1,17 @@
 import type { IDocument } from '@/models/Document'
 import type { ITerm, IFsrs } from '@/models/Term'
 
-// Full progress (with the completedLines array) — needed by the game.
+// Progress is position-based: the current line over the total. Both the game
+// and the dashboard derive the progress bar from `currentLine` / `lineCount`.
 export interface DocumentProgressDTO {
   currentLine: number
-  completedLines: number[]
   totalKeystrokes: number
   correctKeystrokes: number
   lastPlayedAt: string | null
 }
 
-// Summary progress for listings: only the count, not the whole array — the
-// dashboard just needs completedCount for the progress bar (avoids shipping
-// thousands of line indices across many documents).
-export interface DocumentSummaryProgressDTO {
-  currentLine: number
-  completedCount: number
-  totalKeystrokes: number
-  correctKeystrokes: number
-  lastPlayedAt: string | null
-}
+// Listings use the same shape as the full progress (it's already lightweight).
+export type DocumentSummaryProgressDTO = DocumentProgressDTO
 
 export interface DocumentSummaryDTO {
   id: string
@@ -55,22 +47,9 @@ export interface TermDTO {
   updatedAt: string
 }
 
-function fullProgressDTO(p: IDocument['progress']): DocumentProgressDTO {
+function progressDTO(p: IDocument['progress']): DocumentProgressDTO {
   return {
     currentLine: p?.currentLine ?? 0,
-    completedLines: p?.completedLines ?? [],
-    totalKeystrokes: p?.totalKeystrokes ?? 0,
-    correctKeystrokes: p?.correctKeystrokes ?? 0,
-    lastPlayedAt: p?.lastPlayedAt ? new Date(p.lastPlayedAt).toISOString() : null,
-  }
-}
-
-function summaryProgressDTO(
-  p: IDocument['progress'],
-): DocumentSummaryProgressDTO {
-  return {
-    currentLine: p?.currentLine ?? 0,
-    completedCount: p?.completedLines?.length ?? 0,
     totalKeystrokes: p?.totalKeystrokes ?? 0,
     correctKeystrokes: p?.correctKeystrokes ?? 0,
     lastPlayedAt: p?.lastPlayedAt ? new Date(p.lastPlayedAt).toISOString() : null,
@@ -84,7 +63,7 @@ export function serializeDocumentSummary(doc: IDocument): DocumentSummaryDTO {
     language: doc.language,
     source: doc.source,
     lineCount: doc.lineCount,
-    progress: summaryProgressDTO(doc.progress),
+    progress: progressDTO(doc.progress),
     createdAt: new Date(doc.createdAt).toISOString(),
     updatedAt: new Date(doc.updatedAt).toISOString(),
   }
@@ -97,7 +76,7 @@ export function serializeDocument(doc: IDocument): DocumentDTO {
     language: doc.language,
     source: doc.source,
     lineCount: doc.lineCount,
-    progress: fullProgressDTO(doc.progress),
+    progress: progressDTO(doc.progress),
     createdAt: new Date(doc.createdAt).toISOString(),
     updatedAt: new Date(doc.updatedAt).toISOString(),
     lines: doc.lines,

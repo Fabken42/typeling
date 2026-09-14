@@ -188,11 +188,6 @@ export function SettingsClient({
             />
           </div>
         </div>
-        <Toggle
-          label="Modo cloze nos flashcards"
-          checked={settings.clozeMode}
-          onChange={(v) => persist({ clozeMode: v })}
-        />
       </Section>
 
       <Section title="Aparência">

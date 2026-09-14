@@ -347,6 +347,19 @@ export function TypingArea() {
     inputRef.current?.focus()
   }
 
+  // What the copy button copies: the selected snippet of the current line if
+  // there is one, otherwise the whole line. Prefers the live DOM selection
+  // (validated to be inside the line); falls back to the last recorded in-line
+  // selection (which survives the tap that collapses it on mobile).
+  function getCopyText(): string {
+    const sel = window.getSelection()
+    const live = sel?.toString().trim() ?? ''
+    const insideLine =
+      !!sel?.anchorNode && !!lineRef.current?.contains(sel.anchorNode)
+    if (live && insideLine) return live
+    return selectionRef.current?.trim() || line
+  }
+
   return (
     <div className="flex flex-col items-center gap-8">
       <GameControls
@@ -354,6 +367,7 @@ export function TypingArea() {
         language={language}
         onSaveClick={() => openSaveModal()}
         onDismissKeyboard={() => inputRef.current?.blur()}
+        getCopyText={getCopyText}
       />
 
       <div className="flex w-full max-w-3xl flex-col items-center">
