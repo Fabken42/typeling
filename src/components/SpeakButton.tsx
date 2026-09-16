@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Volume2, Loader2 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
-import { BCP47, langInfo, type LanguageCode } from '@/lib/languages'
+import { langInfo } from '@/lib/languages'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useSpeech } from '@/lib/speech'
 
 interface SpeakButtonProps {
   text: string
@@ -14,13 +15,12 @@ interface SpeakButtonProps {
   className?: string
 }
 
-// Web Speech API button (spec section 10). Voices load asynchronously; without
-// the voiceschanged listener getVoices() returns [] on the first render.
+// Web Speech API button (spec section 10). Shares voice loading / speaking with
+// the game's auto-play via the useSpeech hook.
 export function SpeakButton({ text, language, size = 18, className }: SpeakButtonProps) {
-  const settings = useSettingsStore((s) => s.settings)
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const ttsEnabled = useSettingsStore((s) => s.settings.ttsEnabled)
+  const { supported, voiceFor, speak: speakText } = useSpeech()
   const [speaking, setSpeaking] = useState(false)
-  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window
   const mounted = useRef(true)
 
   useEffect(() => {
@@ -30,33 +30,16 @@ export function SpeakButton({ text, language, size = 18, className }: SpeakButto
     }
   }, [])
 
-  useEffect(() => {
-    if (!supported) return
-    const load = () => setVoices(window.speechSynthesis.getVoices())
-    load()
-    window.speechSynthesis.addEventListener('voiceschanged', load)
-    return () =>
-      window.speechSynthesis.removeEventListener('voiceschanged', load)
-  }, [supported])
+  if (!ttsEnabled || !supported) return null
 
-  if (!settings.ttsEnabled || !supported) return null
-
-  const voice = voices.find((v) =>
-    v.lang.toLowerCase().startsWith(language.toLowerCase()),
-  )
+  const voice = voiceFor(language)
   const langName = langInfo(language)?.name ?? language
 
   function speak() {
-    if (!voice) return
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text)
-    u.voice = voice
-    u.lang = BCP47[language as LanguageCode] ?? language
-    u.rate = settings.ttsRate
-    u.onstart = () => mounted.current && setSpeaking(true)
-    u.onend = () => mounted.current && setSpeaking(false)
-    u.onerror = () => mounted.current && setSpeaking(false)
-    window.speechSynthesis.speak(u)
+    speakText(text, language, {
+      onStart: () => mounted.current && setSpeaking(true),
+      onEnd: () => mounted.current && setSpeaking(false),
+    })
   }
 
   const button = (

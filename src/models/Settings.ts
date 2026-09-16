@@ -24,6 +24,7 @@ const SettingsSchema = new Schema<ISettings>({
   },
   requireSpaces: { type: Boolean, default: DEFAULT_SETTINGS.requireSpaces },
   ttsEnabled: { type: Boolean, default: DEFAULT_SETTINGS.ttsEnabled },
+  ttsAutoPlay: { type: Boolean, default: DEFAULT_SETTINGS.ttsAutoPlay },
   ttsRate: { type: Number, default: DEFAULT_SETTINGS.ttsRate },
   dailyNewLimit: { type: Number, default: DEFAULT_SETTINGS.dailyNewLimit },
   dailyReviewLimit: { type: Number, default: DEFAULT_SETTINGS.dailyReviewLimit },

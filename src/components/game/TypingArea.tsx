@@ -8,6 +8,7 @@ import { SelectionChip } from './SelectionChip'
 import { SaveTermModal } from './SaveTermModal'
 import { useGameStore } from '@/store/gameStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { useSpeech } from '@/lib/speech'
 import {
   buildSlots,
   evaluate,
@@ -19,6 +20,7 @@ import type { LanguageCode } from '@/lib/languages'
 
 export function TypingArea() {
   const settings = useSettingsStore((s) => s.settings)
+  const { speak, cancel } = useSpeech()
   const {
     lines,
     language,
@@ -161,6 +163,18 @@ export function TypingArea() {
       window.matchMedia?.('(pointer: coarse)').matches
     if (!coarsePointer) focusInput()
   }, [currentLine, focusInput])
+
+  // Auto-play the current line's audio when it changes (settings.ttsAutoPlay).
+  // Re-runs once voices finish loading (speak's identity changes), so the first
+  // line is spoken as soon as a voice is available.
+  useEffect(() => {
+    if (!settings.ttsEnabled || !settings.ttsAutoPlay || !line) return
+    speak(line, language)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLine, line, language, settings.ttsEnabled, settings.ttsAutoPlay, speak])
+
+  // Stop any auto-played audio when leaving the game (e.g. on completion).
+  useEffect(() => cancel, [cancel])
 
   // Capture selections via selectionchange too — on mobile, selecting text
   // (long-press) doesn't fire mouseup, so this is the reliable signal. It only

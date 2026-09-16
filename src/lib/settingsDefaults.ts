@@ -9,6 +9,7 @@ export interface SettingsValues {
   requireCorrectToAdvance: boolean
   requireSpaces: boolean
   ttsEnabled: boolean
+  ttsAutoPlay: boolean
   ttsRate: number
   dailyNewLimit: number
   dailyReviewLimit: number
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   requireCorrectToAdvance: false,
   requireSpaces: true,
   ttsEnabled: true,
+  ttsAutoPlay: false,
   ttsRate: 0.9,
   dailyNewLimit: 20,
   dailyReviewLimit: 200,

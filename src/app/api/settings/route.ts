@@ -31,6 +31,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.requireCorrectToAdvance === 'boolean') update.requireCorrectToAdvance = body.requireCorrectToAdvance
     if (typeof body.requireSpaces === 'boolean') update.requireSpaces = body.requireSpaces
     if (typeof body.ttsEnabled === 'boolean') update.ttsEnabled = body.ttsEnabled
+    if (typeof body.ttsAutoPlay === 'boolean') update.ttsAutoPlay = body.ttsAutoPlay
     if (typeof body.ttsRate === 'number') {
       update.ttsRate = Math.min(1.5, Math.max(0.5, body.ttsRate))
     }

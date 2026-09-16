@@ -32,6 +32,7 @@ export function serializeSettings(doc: ISettings): PlainSettings {
     requireCorrectToAdvance: doc.requireCorrectToAdvance,
     requireSpaces: doc.requireSpaces,
     ttsEnabled: doc.ttsEnabled,
+    ttsAutoPlay: doc.ttsAutoPlay,
     ttsRate: doc.ttsRate,
     dailyNewLimit: doc.dailyNewLimit,
     dailyReviewLimit: doc.dailyReviewLimit,

@@ -252,6 +252,7 @@ export async function dbConnect() {
   requireCorrectToAdvance: Boolean, // default false
   requireSpaces: Boolean,           // default true (ignorado em ja/zh)
   ttsEnabled: Boolean,              // default true
+  ttsAutoPlay: Boolean,             // default false — fala a linha atual no treino ao trocar de linha
   ttsRate: Number,                  // 0.5–1.5, default 0.9
   dailyNewLimit: Number,            // default 20
   dailyReviewLimit: Number,         // default 200
@@ -747,6 +748,9 @@ speechSynthesis.speak(u)
   `Nenhuma voz de japonês instalada neste dispositivo`.
 - Estado visual: ícone `Volume2` normal, `Loader2` girando durante a fala (`onstart`/`onend`).
 - Se `settings.ttsEnabled === false`, o botão não é renderizado.
+- **Reprodução automática** (`settings.ttsAutoPlay`, padrão desligado): no treino, ao mudar a linha
+  atual (avançar com Enter, navegar ou pular), a linha é falada automaticamente. Requer `ttsEnabled`.
+  Reaproveita a mesma lógica do botão via o hook `useSpeech` (`src/lib/speech.ts`).
 
 ---
 
@@ -893,6 +897,7 @@ pendente (`Próxima revisão: amanhã, 14 cards`).
 
 **Áudio**
 - Ativar botões de pronúncia (padrão: ligado)
+- Reprodução automática do áudio no treino (padrão: desligado; exige os botões de pronúncia ativos)
 - Velocidade da fala — slider 0.5 a 1.5 (padrão: 0.9)
 - Lista das vozes detectadas por idioma, para o usuário saber o que falta instalar no sistema.
 

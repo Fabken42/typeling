@@ -126,6 +126,13 @@ export function SettingsClient({
           checked={settings.ttsEnabled}
           onChange={(v) => persist({ ttsEnabled: v })}
         />
+        <Toggle
+          label="Reprodução automática do áudio"
+          description="No treino, fala a linha atual automaticamente ao avançar ou navegar."
+          checked={settings.ttsAutoPlay}
+          onChange={(v) => persist({ ttsAutoPlay: v })}
+          disabled={!settings.ttsEnabled}
+        />
         <div>
           <div className="flex items-center justify-between">
             <Label>Velocidade da fala</Label>
