@@ -128,7 +128,7 @@ export function SettingsClient({
         />
         <Toggle
           label="Reprodução automática do áudio"
-          description="No treino, fala a linha atual automaticamente ao avançar ou navegar."
+          description="Fala automaticamente a linha no treino e a frase (ou termo) nos flashcards."
           checked={settings.ttsAutoPlay}
           onChange={(v) => persist({ ttsAutoPlay: v })}
           disabled={!settings.ttsEnabled}

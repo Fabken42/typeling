@@ -252,7 +252,7 @@ export async function dbConnect() {
   requireCorrectToAdvance: Boolean, // default false
   requireSpaces: Boolean,           // default true (ignorado em ja/zh)
   ttsEnabled: Boolean,              // default true
-  ttsAutoPlay: Boolean,             // default false — fala a linha atual no treino ao trocar de linha
+  ttsAutoPlay: Boolean,             // default false — autoplay do áudio no treino e nos flashcards
   ttsRate: Number,                  // 0.5–1.5, default 0.9
   dailyNewLimit: Number,            // default 20
   dailyReviewLimit: Number,         // default 200
@@ -665,8 +665,9 @@ O modal também guarda, invisivelmente, `documentId`, `lineIndex` e `language` d
   abrir. Mostre um spinner discreto dentro do campo Tradução.
 - Se abriu **com termo vazio**: não chame a API. Após o usuário digitar o termo e sair do campo
   (`onBlur`), dispare a tradução automaticamente **se o campo Tradução ainda estiver vazio**.
-- Sempre há um botão **🌐 Traduzir** (`Languages`) ao lado do campo, que re-traduz o conteúdo atual
-  do campo Termo, sobrescrevendo a tradução.
+- Sempre há um botão **🌐 Traduzir** (`Languages`) ao lado do campo, que traduz o conteúdo atual do
+  campo Termo e **anexa** o resultado ao que já houver no campo Tradução (separado por `. `),
+  preservando o que o usuário digitou (ex.: a leitura). Se o campo estiver vazio, só coloca a tradução.
 - **Só o termo é traduzido, nunca a frase inteira.**
 - Se a chamada falhar (erro de rede, cota, idioma não suportado), mostre um aviso inline discreto
   — `Tradução automática indisponível, preencha manualmente` — e deixe o campo editável e vazio.
@@ -686,6 +687,15 @@ case-insensitive) e mesmo `language`. Se existir, mostre um aviso com três opç
 
 `Salvar` (cria o `Term` com `createEmptyCard()`) e `Cancelar`. `Esc` cancela. Após salvar, um toast
 `"夜神月" salvo` com link *Desfazer* (5 s) e o foco volta ao input do jogo.
+
+### Modos (`standalone` / `continuous`)
+
+- **`standalone`** (a partir de `/vocabulary`): mostra um seletor de idioma e torna a frase de
+  referência opcional (não há documento de contexto).
+- **`continuous`** (adição em massa em `/vocabulary`): ao salvar, o modal **permanece aberto** com um
+  formulário limpo (mantendo o idioma), em vez de fechar — o usuário adiciona palavra após palavra
+  sem reabrir. Fecha só com `Cancelar`/`Esc`. O campo **Idioma** já vem preenchido com o último
+  idioma que o usuário usou para adicionar (persistido em `localStorage`).
 
 ---
 
@@ -748,9 +758,12 @@ speechSynthesis.speak(u)
   `Nenhuma voz de japonês instalada neste dispositivo`.
 - Estado visual: ícone `Volume2` normal, `Loader2` girando durante a fala (`onstart`/`onend`).
 - Se `settings.ttsEnabled === false`, o botão não é renderizado.
-- **Reprodução automática** (`settings.ttsAutoPlay`, padrão desligado): no treino, ao mudar a linha
-  atual (avançar com Enter, navegar ou pular), a linha é falada automaticamente. Requer `ttsEnabled`.
-  Reaproveita a mesma lógica do botão via o hook `useSpeech` (`src/lib/speech.ts`).
+- **Reprodução automática** (`settings.ttsAutoPlay`, padrão desligado): fala automaticamente ao
+  aparecer novo conteúdo. Requer `ttsEnabled`. Reaproveita a mesma lógica do botão via o hook
+  `useSpeech` (`src/lib/speech.ts`).
+  - **No treino** (`/play`): fala a linha atual ao avançar com Enter, navegar ou pular.
+  - **Nos flashcards** (`/review`): ao surgir um card, fala a frase de exemplo (ou o termo, se não
+    houver frase).
 
 ---
 
@@ -897,7 +910,7 @@ pendente (`Próxima revisão: amanhã, 14 cards`).
 
 **Áudio**
 - Ativar botões de pronúncia (padrão: ligado)
-- Reprodução automática do áudio no treino (padrão: desligado; exige os botões de pronúncia ativos)
+- Reprodução automática do áudio no treino e nos flashcards (padrão: desligado; exige os botões de pronúncia ativos)
 - Velocidade da fala — slider 0.5 a 1.5 (padrão: 0.9)
 - Lista das vozes detectadas por idioma, para o usuário saber o que falta instalar no sistema.
 

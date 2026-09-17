@@ -63,6 +63,27 @@ export function VocabularyClient({
   const [editing, setEditing] = useState<TermDTO | null>(null)
   const [deleting, setDeleting] = useState<TermDTO | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  // The language to pre-fill the "add word" modal with — the last one the user
+  // added, persisted across reloads so bulk-adding stays in the same language.
+  const [lastAddLang, setLastAddLang] = useState('')
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('typeling-last-add-lang')
+      if (v) setLastAddLang(v)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  function rememberAddLang(l: string) {
+    setLastAddLang(l)
+    try {
+      localStorage.setItem('typeling-last-add-lang', l)
+    } catch {
+      /* ignore */
+    }
+  }
 
   // Tracks how many rows we've pulled from the server, independent of local
   // optimistic add/remove, so skip stays aligned with the server offset.
@@ -293,12 +314,16 @@ export function VocabularyClient({
         open={addOpen}
         onClose={() => setAddOpen(false)}
         standalone
+        continuous
         initialTerm=""
         sentence=""
-        language={lang}
+        language={lastAddLang || lang}
         documentId={null}
         lineIndex={null}
-        onSaved={prependLocal}
+        onSaved={(t) => {
+          prependLocal(t)
+          rememberAddLang(t.language)
+        }}
       />
     </div>
   )

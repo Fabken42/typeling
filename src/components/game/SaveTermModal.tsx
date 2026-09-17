@@ -26,10 +26,14 @@ interface SaveTermModalProps {
   // Standalone mode (e.g. from /vocabulary): shows a language picker and makes
   // the reference sentence optional, since there is no document context.
   standalone?: boolean
+  // Continuous mode (e.g. bulk-adding in /vocabulary): after a successful save,
+  // the modal stays open with a fresh form (keeping the language) instead of
+  // closing, so the user can add word after word without reopening it.
+  continuous?: boolean
 }
 
 export function SaveTermModal(props: SaveTermModalProps) {
-  const { open, onClose, initialTerm, sentence, language, documentId, lineIndex, standalone } = props
+  const { open, onClose, initialTerm, sentence, language, documentId, lineIndex, standalone, continuous } = props
   const { toast } = useToast()
   const nativeLanguage = useSettingsStore((s) => s.settings.nativeLanguage)
 
@@ -75,6 +79,24 @@ export function SaveTermModal(props: SaveTermModalProps) {
     setTimeout(() => termRef.current?.focus(), 50)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  // Clears the entry fields for the next word in continuous mode — keeps the
+  // current language and refocuses the term input.
+  function resetForNextEntry() {
+    setTerm('')
+    setReading('')
+    setTranslation('')
+    setSentenceVal(sentence)
+    setNotes('')
+    setTags([])
+    setTagInput('')
+    setShowMore(false)
+    setTranslateError(null)
+    setTranslating(false)
+    setSaving(false)
+    setDuplicates([])
+    setTimeout(() => termRef.current?.focus(), 50)
+  }
 
   async function runTranslate(text: string) {
     const value = text.trim()
@@ -165,7 +187,9 @@ export function SaveTermModal(props: SaveTermModalProps) {
             lineIndex,
           }
 
-    onClose()
+    // In continuous mode keep the modal open with a fresh form; otherwise close.
+    if (continuous) resetForNextEntry()
+    else onClose()
 
     // Success is silent (no toast) — only failures surface (spec polish request).
     api

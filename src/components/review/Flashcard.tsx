@@ -1,9 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { SpeakButton } from '@/components/SpeakButton'
 import { LanguageBadge } from '@/components/LanguageBadge'
 import { cn } from '@/lib/utils'
+import { useSpeech } from '@/lib/speech'
+import { useSettingsStore } from '@/store/settingsStore'
 import { previewIntervals, formatInterval } from '@/lib/fsrs'
 import type { TermDTO } from '@/lib/serialize'
 
@@ -39,11 +41,27 @@ function renderSentence(sentence: string, term: string) {
 }
 
 export function Flashcard({ term, revealed, onReveal, onRate }: FlashcardProps) {
+  const ttsEnabled = useSettingsStore((s) => s.settings.ttsEnabled)
+  const ttsAutoPlay = useSettingsStore((s) => s.settings.ttsAutoPlay)
+  const { speak, cancel } = useSpeech()
+
   const intervals = useMemo(() => {
     const now = new Date()
     return previewIntervals(term.fsrs, now).map((p) => formatInterval(p.card, now))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term.id])
+
+  // Auto-play the card's audio when it appears: the example sentence, or the
+  // term itself when there's no sentence. Re-runs once voices finish loading.
+  useEffect(() => {
+    if (!ttsEnabled || !ttsAutoPlay) return
+    const text = term.sentence?.trim() || term.term
+    if (text) speak(text, term.language)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term.id, ttsEnabled, ttsAutoPlay, speak])
+
+  // Stop audio when the card is unmounted (session ends).
+  useEffect(() => cancel, [cancel])
 
   return (
     <div className="w-full max-w-2xl">
