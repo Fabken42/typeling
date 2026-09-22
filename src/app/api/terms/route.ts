@@ -30,13 +30,12 @@ export async function POST(req: NextRequest) {
 
     await dbConnect()
 
-    // Duplicate handling: append the new sentence to an existing card (spec 8).
+    // Duplicate handling: update the existing card to the most recently added
+    // example sentence, replacing the previous one (spec 8).
     if (appendToId) {
       const existing = await TermModel.findOne({ _id: appendToId, userId })
       if (!existing) return errorJson('Card não encontrado', 404)
-      existing.sentence = existing.sentence
-        ? `${existing.sentence} / ${sentence}`
-        : sentence
+      existing.sentence = sentence
       await existing.save()
       return json(serializeTerm(existing.toObject()), 200)
     }

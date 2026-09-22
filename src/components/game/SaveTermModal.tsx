@@ -399,7 +399,7 @@ function DuplicatePrompt({
       </div>
       <div className="flex flex-col gap-2">
         <Button variant="primary" onClick={() => onAppend(dup.id)} loading={saving}>
-          Adicionar frase ao card existente
+          Atualizar com a nova frase de exemplo
         </Button>
         <Button variant="secondary" onClick={onCreate} loading={saving}>
           Criar mesmo assim

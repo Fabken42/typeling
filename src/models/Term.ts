@@ -62,6 +62,7 @@ const TermSchema = new Schema<ITerm>(
 )
 
 TermSchema.index({ userId: 1, 'fsrs.due': 1 })
+TermSchema.index({ userId: 1, createdAt: -1 })
 TermSchema.index({ userId: 1, language: 1, createdAt: -1 })
 TermSchema.index({ userId: 1, term: 1 })
 

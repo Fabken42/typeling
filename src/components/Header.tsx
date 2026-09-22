@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { api } from '@/lib/client'
 import { signOutAction } from '@/app/actions'
 import { useSettingsStore } from '@/store/settingsStore'
+import { subscribeReviewBadge } from '@/lib/reviewBadge'
 
 interface HeaderProps {
   user: { name?: string | null; email?: string | null; image?: string | null }
@@ -39,23 +40,43 @@ export function Header({ user, initialQueued, lastPlayed }: HeaderProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const loadSettings = useSettingsStore((s) => s.load)
 
-  // Load settings once (applies theme) and refresh the review badge on nav.
+  // Load settings once (applies theme).
   useEffect(() => {
     loadSettings()
   }, [loadSettings])
 
+  // The badge is seeded from the server (initialQueued) and then kept fresh by
+  // targeted signals instead of a fetch on every navigation: the review flow
+  // emits cheap adjust/set events as the user studies, and we refetch the
+  // authoritative count when the tab regains focus.
   useEffect(() => {
     let alive = true
-    api
-      .get<{ queued: number }>('/api/review/stats')
-      .then((r) => {
-        if (alive) setQueued(r.queued)
-      })
-      .catch(() => {})
+    const refresh = () => {
+      api
+        .get<{ queued: number }>('/api/review/stats')
+        .then((r) => alive && setQueued(r.queued))
+        .catch(() => {})
+    }
+
+    const unsubscribe = subscribeReviewBadge((e) => {
+      if (e.type === 'adjust') setQueued((q) => Math.max(0, q + e.delta))
+      else if (e.type === 'set') setQueued(Math.max(0, e.value))
+      else refresh()
+    })
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+
     return () => {
       alive = false
+      unsubscribe()
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [pathname])
+  }, [])
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {

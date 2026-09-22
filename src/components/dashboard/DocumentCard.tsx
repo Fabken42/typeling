@@ -40,6 +40,15 @@ export function DocumentCard({ doc, onRename, onChangeLanguage, onReset, onDelet
   const [title, setTitle] = useState(doc.title)
   const [language, setLanguage] = useState(doc.language)
   const menuRef = useRef<HTMLDivElement>(null)
+  const prefetched = useRef(false)
+
+  // Warm the game route (RSC + JS) the first time the user hints at opening it,
+  // so the click navigates instantly instead of waiting on the server render.
+  function prefetchPlay() {
+    if (prefetched.current) return
+    prefetched.current = true
+    router.prefetch(`/play/${doc.id}`)
+  }
 
   const ratio = progressRatio(doc.progress.currentLine, doc.lineCount)
   const pct = Math.round(ratio * 100)
@@ -82,6 +91,8 @@ export function DocumentCard({ doc, onRename, onChangeLanguage, onReset, onDelet
     <>
       <div
         onClick={() => router.push(`/play/${doc.id}`)}
+        onMouseEnter={prefetchPlay}
+        onPointerDown={prefetchPlay}
         className="group relative min-w-0 cursor-pointer rounded-xl border border-border bg-surface p-4 transition-colors hover:border-emerald-500/40"
       >
         <div className="flex items-start justify-between gap-2">

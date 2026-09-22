@@ -678,8 +678,8 @@ O modal também guarda, invisivelmente, `documentId`, `lineIndex` e `language` d
 Antes de salvar, verifique se já existe um `Term` do mesmo usuário com o mesmo `term` (comparação
 case-insensitive) e mesmo `language`. Se existir, mostre um aviso com três opções:
 
-- **Adicionar frase ao card existente** — anexa a nova frase ao campo `sentence` do card antigo
-  (separando com ` / `) e não cria card novo;
+- **Atualizar com a nova frase de exemplo** — substitui o campo `sentence` do card existente pela
+  frase recém-adicionada (mantém apenas a mais recente) e não cria card novo;
 - **Criar mesmo assim** — cria um segundo card;
 - **Cancelar**.
 

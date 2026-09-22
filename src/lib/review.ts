@@ -34,16 +34,20 @@ function baseFilter(
 /** How many new / review cards were already done since the 04:00 rollover. */
 async function doneToday(userId: mongoose.Types.ObjectId, now: Date) {
   const since = dayStart(now)
-  const logs = await ReviewLogModel.find(
-    { userId, review: { $gte: since } },
-    { state: 1 },
-  ).lean()
-  let newDone = 0
-  let reviewDone = 0
-  for (const l of logs) {
-    if (l.state === STATE_NEW) newDone++
-    else reviewDone++
-  }
+  // Two count queries (covered by the { userId, review } index) instead of
+  // pulling every log into memory just to tally them.
+  const [newDone, reviewDone] = await Promise.all([
+    ReviewLogModel.countDocuments({
+      userId,
+      review: { $gte: since },
+      state: STATE_NEW,
+    }),
+    ReviewLogModel.countDocuments({
+      userId,
+      review: { $gte: since },
+      state: { $ne: STATE_NEW },
+    }),
+  ])
   return { newDone, reviewDone }
 }
 

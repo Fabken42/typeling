@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react'
 import Link from 'next/link'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useSearchParams, usePathname } from 'next/navigation'
 import { Loader2, X, Pencil, PauseCircle, CalendarClock, PartyPopper } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Flashcard } from '@/components/review/Flashcard'
@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast'
 import { useReviewStore, type QueueCounts } from '@/store/reviewStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { api } from '@/lib/client'
+import { adjustReviewBadge, setReviewBadge } from '@/lib/reviewBadge'
 import { dueLabel, cn } from '@/lib/utils'
 import { langInfo } from '@/lib/languages'
 import type { LanguageReviewCount } from '@/lib/review'
@@ -39,7 +40,6 @@ interface Props {
 function ReviewInner({ initialData, initialLanguages, initialSettings }: Props) {
   const params = useSearchParams()
   const query = params.toString()
-  const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
 
@@ -65,7 +65,11 @@ function ReviewInner({ initialData, initialLanguages, initialSettings }: Props) 
     if (next.size === allLangCodes.length) sp.delete('langs')
     else sp.set('langs', allLangCodes.filter((c) => next.has(c)).join(','))
     const qs = sp.toString()
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    // Update the URL via the History API instead of router.replace: this keeps
+    // the change bookmarkable and still updates useSearchParams (so the queue
+    // refetches), but avoids a wasteful server re-render of the page RSC — the
+    // visible queue is refreshed by the client `load()` effect below.
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
 
   const hydrateSettings = useSettingsStore((s) => s.hydrate)
@@ -109,6 +113,12 @@ function ReviewInner({ initialData, initialLanguages, initialSettings }: Props) 
     load(query)
   }, [query, load])
 
+  // Keep the nav badge in exact sync with each fresh queue load (initial hydrate
+  // or a filter reload), so opening /review corrects any drift.
+  useEffect(() => {
+    if (counts) setReviewBadge(counts.queued)
+  }, [counts])
+
   const current: TermDTO | undefined = queue[index]
   const reviewedCount = ratings[1] + ratings[2] + ratings[3] + ratings[4]
   const finishedQueue = loaded && !loading && (index >= queue.length || ended)
@@ -118,6 +128,7 @@ function ReviewInner({ initialData, initialLanguages, initialSettings }: Props) 
       const term = queue[index]
       if (!term) return
       advance(rating)
+      adjustReviewBadge(-1) // one card done — drop the nav badge optimistically
       api.post(`/api/review/${term.id}`, { rating }).catch((e) =>
         toast({
           message: e instanceof Error ? e.message : 'Falha ao agendar revisão',
