@@ -219,13 +219,13 @@ function ReviewInner({ initialData, initialLanguages, initialSettings }: Props) 
             {index + 1} / {total}
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <button onClick={() => setEditOpen(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Editar (E)">
+            <button onClick={() => setEditOpen(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Editar (E)" aria-label="Editar">
               <Pencil size={16} />
             </button>
-            <button onClick={suspend} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Suspender (S)">
+            <button onClick={suspend} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Suspender (S)" aria-label="Suspender">
               <PauseCircle size={16} />
             </button>
-            <button onClick={() => setEnded(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Encerrar (Esc)">
+            <button onClick={() => setEnded(true)} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title="Encerrar (Esc)" aria-label="Encerrar">
               <X size={16} />
             </button>
           </div>

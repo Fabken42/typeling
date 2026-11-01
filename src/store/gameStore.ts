@@ -81,6 +81,67 @@ export function flushProgressBeacon(s: {
   navigator.sendBeacon(`/api/documents/${s.documentId}/progress`, blob)
 }
 
+// --- Local (localStorage) persistence -------------------------------------
+//
+// The server is checkpointed on a 2s debounce; local storage mirrors the full
+// in-progress state (including the current line's typed input and revealed
+// hints) on a shorter debounce. When a mobile browser discards the backgrounded
+// tab and the user returns, init() restores this snapshot so they land exactly
+// where they left off instead of at the last server checkpoint.
+
+const PERSIST_KEY = 'typeling-game'
+
+interface GamePersist {
+  documentId: string
+  currentLine: number
+  totalKeystrokes: number
+  correctKeystrokes: number
+  input: string
+  revealCount: number
+  fullyRevealed: boolean
+  finished: boolean
+}
+
+function loadPersisted(): GamePersist | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(PERSIST_KEY)
+    return raw ? (JSON.parse(raw) as GamePersist) : null
+  } catch {
+    return null
+  }
+}
+
+function writePersisted(s: GameState) {
+  if (typeof window === 'undefined' || !s.documentId) return
+  try {
+    const snapshot: GamePersist = {
+      documentId: s.documentId,
+      currentLine: s.currentLine,
+      totalKeystrokes: s.totalKeystrokes,
+      correctKeystrokes: s.correctKeystrokes,
+      input: s.input,
+      revealCount: s.revealCount,
+      fullyRevealed: s.fullyRevealed,
+      finished: s.finished,
+    }
+    window.localStorage.setItem(PERSIST_KEY, JSON.stringify(snapshot))
+  } catch {
+    /* quota / privacy mode — persistence is best-effort */
+  }
+}
+
+let localTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Force an immediate local snapshot (used by the visibilitychange handler). */
+export function flushGameLocal() {
+  if (localTimer) {
+    clearTimeout(localTimer)
+    localTimer = null
+  }
+  writePersisted(useGameStore.getState())
+}
+
 export const useGameStore = create<GameState>((set, get) => ({
   documentId: null,
   title: '',
@@ -98,27 +159,46 @@ export const useGameStore = create<GameState>((set, get) => ({
   fullyRevealed: false,
   finished: false,
 
-  init: (doc, startLine) =>
+  init: (doc, startLine) => {
+    const prev = get()
+    const persisted = loadPersisted()
+    // Resume from the local snapshot only when returning to the *same* document
+    // with no explicit start line, and only if the snapshot is at least as far
+    // as the server's checkpoint (i.e. it reflects edits the 2s debounce may not
+    // have flushed before the tab was discarded). Otherwise trust the server.
+    const resume =
+      startLine == null &&
+      persisted != null &&
+      persisted.documentId === doc.id &&
+      persisted.currentLine >= doc.progress.currentLine
+
+    const serverLine =
+      startLine != null
+        ? Math.max(0, Math.min(startLine, doc.lineCount - 1))
+        : Math.max(0, Math.min(doc.progress.currentLine, doc.lineCount - 1))
+
     set({
       documentId: doc.id,
       title: doc.title,
       language: doc.language,
       lines: doc.lines,
       lineCount: doc.lineCount,
-      currentLine:
-        startLine != null
-          ? Math.max(0, Math.min(startLine, doc.lineCount - 1))
-          : Math.max(0, Math.min(doc.progress.currentLine, doc.lineCount - 1)),
-      totalKeystrokes: doc.progress.totalKeystrokes,
-      correctKeystrokes: doc.progress.correctKeystrokes,
-      input: '',
+      currentLine: resume
+        ? Math.max(0, Math.min(persisted!.currentLine, doc.lineCount - 1))
+        : serverLine,
+      totalKeystrokes: resume ? persisted!.totalKeystrokes : doc.progress.totalKeystrokes,
+      correctKeystrokes: resume
+        ? persisted!.correctKeystrokes
+        : doc.progress.correctKeystrokes,
+      input: resume ? persisted!.input : '',
       isComposing: false,
       compositionStart: 0,
       pendingSelection: null,
-      revealCount: 0,
-      fullyRevealed: false,
-      finished: false,
-    }),
+      revealCount: resume ? persisted!.revealCount : 0,
+      fullyRevealed: resume ? persisted!.fullyRevealed : false,
+      finished: resume ? persisted!.finished : false,
+    })
+  },
 
   setInput: (v) => {
     set({ input: v })
@@ -167,3 +247,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   revealAll: () => set({ fullyRevealed: true }),
   clearReveal: () => set({ revealCount: 0, fullyRevealed: false }),
 }))
+
+// Mirror every state change to localStorage on a short debounce. Centralised
+// here (instead of in each action) so no mutation can forget to persist.
+if (typeof window !== 'undefined') {
+  useGameStore.subscribe((s) => {
+    if (!s.documentId) return
+    if (localTimer) clearTimeout(localTimer)
+    localTimer = setTimeout(() => writePersisted(s), 300)
+  })
+}

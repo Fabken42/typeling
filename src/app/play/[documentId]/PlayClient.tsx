@@ -15,7 +15,7 @@ import { TypingArea } from '@/components/game/TypingArea'
 import { LanguageBadge } from '@/components/LanguageBadge'
 import { api } from '@/lib/client'
 import { progressRatio } from '@/lib/utils'
-import { useGameStore, flushProgressBeacon } from '@/store/gameStore'
+import { useGameStore, flushProgressBeacon, flushGameLocal } from '@/store/gameStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import type { DocumentDTO } from '@/lib/serialize'
 import type { ClientSettings } from '@/lib/settingsDefaults'
@@ -54,7 +54,10 @@ export function PlayClient({ doc, startLine, initialSettings }: PlayClientProps)
   useEffect(() => {
     const flush = () => {
       const s = useGameStore.getState()
-      if (s.documentId) flushProgressBeacon(s)
+      if (s.documentId) {
+        flushProgressBeacon(s) // checkpoint to the server
+        flushGameLocal() // snapshot the exact in-progress line locally
+      }
     }
     const onVis = () => {
       if (document.visibilityState === 'hidden') flush()

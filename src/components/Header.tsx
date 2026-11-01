@@ -149,6 +149,9 @@ export function Header({ user, initialQueued, lastPlayed }: HeaderProps) {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Menu da conta"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
               className="flex items-center gap-1 rounded-full border border-border p-0.5 pr-1.5 hover:bg-surface-2"
             >
               {user.image ? (

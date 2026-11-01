@@ -20,7 +20,14 @@ globalForMongoose.__mongoose = cached
 export async function dbConnect(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI!, { bufferCommands: false })
+    cached.promise = mongoose.connect(MONGODB_URI!, {
+      bufferCommands: false,
+      maxPoolSize: 10,
+      // Fail fast instead of hanging a page render when Mongo is unreachable;
+      // safeAuth()/try-catches then degrade gracefully.
+      serverSelectionTimeoutMS: 8000,
+      socketTimeoutMS: 45000,
+    })
   }
   cached.conn = await cached.promise
   return cached.conn

@@ -9,7 +9,10 @@ if (!uri) {
   throw new Error('MONGODB_URI is not defined in the environment')
 }
 
-const options = {}
+const options = {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 8000,
+}
 
 let clientPromise: Promise<MongoClient>
 

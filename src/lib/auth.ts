@@ -3,12 +3,14 @@ import Google from 'next-auth/providers/google'
 import { MongoDBAdapter } from '@auth/mongodb-adapter'
 import clientPromise from '@/lib/mongodb'
 
-// Auth.js v5 config. Google-only, database session strategy (spec 4.1).
-// The adapter uses the native MongoDB driver and manages users/accounts/
-// sessions/verification_tokens. Mongoose models reference users._id via userId.
+// Auth.js v5 config. Google-only. The adapter still persists users/accounts on
+// sign-in, but the session itself is a stateless JWT (not a DB row): validating
+// a request reads and verifies the signed cookie instead of querying MongoDB, so
+// every page load / API call avoids an extra session round-trip to the database.
+// Mongoose models reference users._id via userId, carried on the token as `id`.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
-  session: { strategy: 'database' },
+  session: { strategy: 'jwt' },
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -19,9 +21,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/login',
   },
   callbacks: {
-    // Database sessions: expose the stable user.id on the session object.
-    session({ session, user }) {
-      if (session.user) session.user.id = user.id
+    // Persist the adapter user id on the token at sign-in (when `user` is set),
+    // then expose it as the stable session.user.id on every request.
+    jwt({ token, user }) {
+      if (user) token.id = user.id
+      return token
+    },
+    session({ session, token }) {
+      if (session.user && token.id) session.user.id = token.id as string
       return session
     },
   },

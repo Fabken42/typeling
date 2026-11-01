@@ -65,6 +65,12 @@ TermSchema.index({ userId: 1, 'fsrs.due': 1 })
 TermSchema.index({ userId: 1, createdAt: -1 })
 TermSchema.index({ userId: 1, language: 1, createdAt: -1 })
 TermSchema.index({ userId: 1, term: 1 })
+// Review-queue hot paths (see lib/review.ts): due cards filter on
+// { userId, suspended, fsrs.due } and sort by due; new cards filter on
+// { userId, suspended, fsrs.state } and sort by createdAt. These compound
+// indexes let both run index-only instead of scanning the user's whole deck.
+TermSchema.index({ userId: 1, suspended: 1, 'fsrs.due': 1 })
+TermSchema.index({ userId: 1, suspended: 1, 'fsrs.state': 1, createdAt: 1 })
 
 export const TermModel: Model<ITerm> =
   (mongoose.models.Term as Model<ITerm>) ||
