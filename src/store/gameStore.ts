@@ -18,12 +18,13 @@ interface GameState {
   isComposing: boolean
   compositionStart: number
   pendingSelection: string | null
-  revealCount: number // chars revealed via Tab hint
+  revealCount: number // chars revealed via Shift+Tab hint
   fullyRevealed: boolean
   finished: boolean
 
   init: (doc: DocumentDTO, startLine?: number) => void
   setInput: (v: string) => void
+  clearInput: () => void
   startComposition: (pos: number) => void
   endComposition: (v: string) => void
   setPendingSelection: (s: string | null) => void
@@ -203,6 +204,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setInput: (v) => {
     set({ input: v })
   },
+
+  // Wipe the current line's typed text (the Tab shortcut), like Ctrl+A +
+  // Backspace. Does not touch revealed hints or the line position.
+  clearInput: () => set({ input: '', isComposing: false, compositionStart: 0 }),
 
   startComposition: (pos) => set({ isComposing: true, compositionStart: pos }),
   endComposition: (v) => set({ isComposing: false, input: v }),

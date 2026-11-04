@@ -32,6 +32,7 @@ export function TypingArea() {
     revealCount,
     fullyRevealed,
     setInput,
+    clearInput,
     startComposition,
     endComposition,
     setPendingSelection,
@@ -228,7 +229,8 @@ export function TypingArea() {
     setModalOpen(true)
   }
 
-  // Input-level keys: Enter (advance) and Tab (hint). IME-safe.
+  // Input-level keys: Enter (advance), Tab (clear the line) and Shift+Tab
+  // (reveal next char hint). IME-safe.
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     // The classic Enter bug: ignore Enter that confirms an IME candidate.
     if (e.nativeEvent.isComposing || e.keyCode === 229) return
@@ -237,7 +239,8 @@ export function TypingArea() {
       handleAdvance()
     } else if (e.key === 'Tab') {
       e.preventDefault()
-      revealNext()
+      if (e.shiftKey) revealNext()
+      else clearInput()
     }
   }
 
